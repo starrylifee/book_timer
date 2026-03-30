@@ -41,7 +41,7 @@
           </article>
           <article class="step-card">
             <span class="step-number">3</span>
-            <strong>다시 눌러 확인</strong>
+            <strong>다시 눌러요</strong>
             <p>두 번째 터치 때 경과 시간과 성공 여부를 알려 줘요.</p>
           </article>
         </div>
@@ -127,7 +127,8 @@
             <div class="action-strip">
               <button id="downloadTodayBtn" class="action-button" type="button">오늘 CSV</button>
               <button id="downloadAllBtn" class="action-button secondary" type="button">전체 CSV</button>
-              <button id="resetTodayBtn" class="action-button danger" type="button">오늘 초기화</button>
+              <button id="resetApprovalsBtn" class="action-button secondary" type="button">승인만 초기화</button>
+              <button id="resetTodayBtn" class="action-button danger" type="button">오늘 전체 초기화</button>
             </div>
           </article>
 
@@ -222,7 +223,7 @@
               <label class="field">
                 <span>카드 표시 방식</span>
                 <select name="studentDisplayMode">
-                  <option value="number">번호만</option>
+                  <option value="number">번호 중심</option>
                   <option value="name">번호 + 이름</option>
                   <option value="nickname">번호 + 별명</option>
                   <option value="name-or-nickname">번호 + 이름 우선, 없으면 별명</option>

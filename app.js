@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS = {
   },
   students: {
     roster: DEFAULT_STUDENT_ROSTER,
-    displayMode: "number",
+    displayMode: "name-or-nickname",
   },
   importantNotice: "중요사항을 설정에서 입력해 주세요.",
   dailyAlerts: {},
@@ -93,6 +93,7 @@ const elements = {
   approveAllBtn: document.getElementById("approveAllBtn"),
   downloadTodayBtn: document.getElementById("downloadTodayBtn"),
   downloadAllBtn: document.getElementById("downloadAllBtn"),
+  resetApprovalsBtn: document.getElementById("resetApprovalsBtn"),
   resetTodayBtn: document.getElementById("resetTodayBtn"),
   settingsOverlay: document.getElementById("settingsOverlay"),
   settingsForm: document.getElementById("settingsForm"),
@@ -119,6 +120,7 @@ function bindEvents() {
   });
   elements.downloadTodayBtn.addEventListener("click", () => downloadCsv("today"));
   elements.downloadAllBtn.addEventListener("click", () => downloadCsv("all"));
+  elements.resetApprovalsBtn.addEventListener("click", resetApprovalsToday);
   elements.resetTodayBtn.addEventListener("click", resetToday);
   elements.openSettingsBtn.addEventListener("click", openSettings);
   elements.closeSettingsBtn.addEventListener("click", closeSettings);
@@ -155,12 +157,16 @@ function renderGeneral() {
   const title = buildDisplayTitle();
   const baseMinutes = getBaseMinutes();
   const penaltyMinutes = getPenaltyMinutes();
-  const titlePrefix = title ? `${title} · ` : "";
+  const summaryText = title
+    ? `${title} · 번호를 누르고 읽은 뒤 다시 눌러요.`
+    : "번호를 누르고 읽은 뒤 다시 눌러요.";
 
   document.title = `${title} 아침 독서 미션`;
   elements.summaryTitle.textContent = "아침 독서 시작";
-  elements.summaryCopy.textContent =
-    `${titlePrefix}준비가 되면 자기 번호를 한 번 누르고, 차분히 읽은 뒤 같은 번호를 다시 눌러요.`;
+  elements.summaryCopy.textContent = summaryText;
+  elements.summaryCopy.title = title
+    ? `${title} · 준비가 되면 자기 번호를 한 번 누르고, 차분히 읽은 뒤 같은 번호를 다시 눌러요.`
+    : summaryText;
   elements.boardTitle.textContent = "준비되면 자기 번호를 눌러요";
   elements.boardNote.textContent =
     `${baseMinutes}분 뒤 성공 · 일찍 누르면 ${penaltyMinutes}분 추가`;
@@ -187,10 +193,13 @@ function renderApproval() {
 
   elements.pendingApprovalCount.textContent = `${pendingCount}명`;
   elements.approvedCount.textContent = `${approvedCount}명`;
-  elements.approvalSummary.textContent = pendingCount > 0 ? `승인 대기 ${pendingCount}명` : "모든 성공 학생 승인 완료";
+  elements.approvalSummary.textContent = pendingCount > 0
+    ? `${rewardsEnabled ? "승인/전송 대기" : "로컬 승인 대기"} ${pendingCount}명`
+    : "모든 성공 학생 승인 완료";
   elements.approvalStatusText.textContent = rewardsEnabled
-    ? "일괄 승인 시 설정된 점수를 함께 전송합니다."
-    : "일괄 승인 시 로컬 보드에서만 승인 상태로 바뀝니다.";
+    ? "체크 ON 상태입니다. 버튼을 누르면 GROWND 전송 후 승인됩니다."
+    : "체크 OFF 상태입니다. 지금 누르면 로컬 승인만 되고 GROWND 전송은 되지 않습니다.";
+  elements.approveAllBtn.textContent = rewardsEnabled ? "성공 학생 승인 + 전송" : "성공 학생 로컬 승인";
   elements.approveAllBtn.disabled = pendingCount === 0;
 }
 
@@ -206,6 +215,8 @@ function renderSchedule() {
   const scheduleItems = settingsState.schedules[weekdayKey] || [];
 
   elements.weekdayLabel.textContent = weekdayLabel;
+  elements.scheduleList.classList.toggle("is-long", scheduleItems.length >= 5);
+  elements.scheduleList.classList.toggle("is-very-long", scheduleItems.length >= 7);
 
   if (scheduleItems.length === 0) {
     const message = weekdayKey === "saturday" || weekdayKey === "sunday"
@@ -380,14 +391,17 @@ async function approveCompletedStudents() {
   persistRecords();
   renderAll();
 
-  elements.approveAllBtn.textContent = "성공 학생 일괄 승인";
-
   if (failedCount > 0) {
     showNotice(`승인 ${approvedCount}명, 전송 실패 ${failedCount}명입니다.`, "warning", { duration: 2600 });
     return;
   }
 
-  showNotice(`학생 ${approvedCount}명 승인 완료`, "success");
+  showNotice(
+    rewardsEnabled
+      ? `학생 ${approvedCount}명 승인 및 전송 완료`
+      : `학생 ${approvedCount}명 로컬 승인 완료`,
+    "success"
+  );
 }
 
 function markStudentApproved(entry, approvedAt, rewardPoints, errorMessage) {
@@ -608,14 +622,53 @@ function handleSettingsSubmit(event) {
 function resetToday() {
   syncDateIfNeeded();
 
-  if (!window.confirm("오늘 기록을 모두 지울까요?")) {
+  if (!window.confirm("오늘 독서 기록과 승인 기록을 모두 지울까요?")) {
     return;
   }
 
   appState.records[activeDateKey] = createBlankDayRecord();
   persistRecords();
   renderAll();
-  showNotice("오늘 기록을 초기화했습니다.", "default");
+  showNotice("오늘 기록을 처음 상태로 되돌렸습니다.", "default");
+}
+
+function resetApprovalsToday() {
+  syncDateIfNeeded();
+
+  if (!window.confirm("오늘 성공 상태는 그대로 두고 승인 기록만 지울까요?")) {
+    return;
+  }
+
+  const todayRecord = getTodayRecord();
+  let clearedCount = 0;
+  const resetAt = new Date().toISOString();
+
+  getStudentIds().forEach((studentId) => {
+    const entry = todayRecord[studentId];
+
+    if (!entry?.approvedAt && !entry?.rewardSyncedAt && !entry?.rewardSyncError && !entry?.rewardPointsSent) {
+      return;
+    }
+
+    entry.approvedAt = "";
+    entry.rewardPointsSent = 0;
+    entry.rewardSyncedAt = "";
+    entry.rewardSyncError = "";
+    entry.history.push({
+      type: "approval_reset",
+      at: resetAt,
+    });
+    clearedCount += 1;
+  });
+
+  if (clearedCount === 0) {
+    showNotice("초기화할 승인 기록이 없습니다.", "default");
+    return;
+  }
+
+  persistRecords();
+  renderAll();
+  showNotice(`승인 기록 ${clearedCount}건을 초기화했습니다.`, "default");
 }
 
 function downloadCsv(scope) {
@@ -964,12 +1017,16 @@ function getStudentById(studentId) {
 function getStudentDisplayName(student) {
   const mode = normalizeStudentDisplayMode(settingsState.students?.displayMode);
 
+  if (mode === "number") {
+    return student.nickname || student.name || "";
+  }
+
   if (mode === "name") {
-    return student.name || "";
+    return student.name || student.nickname || "";
   }
 
   if (mode === "nickname") {
-    return student.nickname || "";
+    return student.nickname || student.name || "";
   }
 
   if (mode === "name-or-nickname") {
@@ -1188,7 +1245,7 @@ function rosterToTextareaValue(roster) {
 function normalizeStudentDisplayMode(value) {
   const allowed = new Set(["number", "name", "nickname", "name-or-nickname"]);
   const mode = String(value || "").trim();
-  return allowed.has(mode) ? mode : "number";
+  return allowed.has(mode) ? mode : "name-or-nickname";
 }
 
 function clampPositiveInt(value, fallback, min, max) {
