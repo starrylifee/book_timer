@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#173a43">
+    <title>아침 독서 미션 보드</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="stage">
+      <button
+        id="openSettingsBtn"
+        class="teacher-entry ghost-button"
+        type="button"
+        aria-label="교사용 설정 열기"
+      >
+        교사 설정
+      </button>
+
+      <header class="panel hero-panel">
+        <div class="hero-copy">
+          <div class="hero-topline">
+            <span class="eyebrow">아침 독서 미션</span>
+            <span id="todayLabel" class="hero-date">-</span>
+          </div>
+          <h1 id="summaryTitle">우리 반 아침 독서</h1>
+          <p id="summaryCopy" class="summary-copy"></p>
+        </div>
+
+        <div class="hero-steps" aria-hidden="true">
+          <article class="step-card">
+            <span class="step-number">1</span>
+            <strong>준비되면 시작</strong>
+            <p>자기 번호를 한 번 눌러 독서를 시작해요.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-number">2</span>
+            <strong>차분히 읽기</strong>
+            <p>읽는 동안 시간은 보이지 않아요. 조용히 집중해요.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-number">3</span>
+            <strong>다시 눌러 확인</strong>
+            <p>두 번째 터치 때 경과 시간과 성공 여부를 알려 줘요.</p>
+          </article>
+        </div>
+      </header>
+
+      <section class="info-ribbon">
+        <article class="panel info-panel today-alert-panel">
+          <div class="section-head">
+            <h2>오늘의 알림</h2>
+            <span class="section-chip">오늘 꼭 보기</span>
+          </div>
+          <p id="todayAlertText" class="highlight-copy"></p>
+        </article>
+
+        <article class="panel info-panel schedule-panel">
+          <div class="section-head">
+            <h2>오늘 시간표</h2>
+            <span id="weekdayLabel" class="section-chip"></span>
+          </div>
+          <ul id="scheduleList" class="schedule-list"></ul>
+        </article>
+
+        <article class="panel info-panel important-panel">
+          <div class="section-head">
+            <h2>중요사항</h2>
+            <span class="section-chip accent">놓치지 않기</span>
+          </div>
+          <p id="importantNoticeText" class="panel-copy"></p>
+        </article>
+      </section>
+
+      <main class="panel board-panel">
+        <div class="board-head">
+          <div>
+            <p class="board-label">터치 보드</p>
+            <h2 id="boardTitle">준비되면 자기 번호를 눌러요</h2>
+          </div>
+          <p id="boardNote" class="board-note"></p>
+        </div>
+        <div id="board" class="student-grid" aria-live="polite"></div>
+      </main>
+    </div>
+
+    <div id="notice" class="notice" hidden aria-live="assertive"></div>
+
+    <div id="settingsOverlay" class="overlay" hidden>
+      <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="settings-head">
+          <div>
+            <p class="settings-label">교사용 설정</p>
+            <h2 id="settingsTitle">운영 도구와 화면 설정</h2>
+          </div>
+          <button id="closeSettingsBtn" class="ghost-button" type="button">닫기</button>
+        </div>
+
+        <section class="teacher-dashboard" aria-label="교사 도구">
+          <article class="panel teacher-panel">
+            <div class="section-head">
+              <h3>오늘 현황</h3>
+              <span class="section-chip">실시간</span>
+            </div>
+            <div class="status-strip">
+              <article class="status-card">
+                <span class="status-label">성공</span>
+                <strong id="successCount">0 / 0</strong>
+              </article>
+              <article class="status-card">
+                <span class="status-label">읽는 중</span>
+                <strong id="readingCount">0명</strong>
+              </article>
+              <article class="status-card">
+                <span class="status-label">대기</span>
+                <strong id="idleCount">0명</strong>
+              </article>
+            </div>
+          </article>
+
+          <article class="panel teacher-panel">
+            <div class="section-head">
+              <h3>기록 관리</h3>
+              <span class="section-chip">교사용</span>
+            </div>
+            <div class="action-strip">
+              <button id="downloadTodayBtn" class="action-button" type="button">오늘 CSV</button>
+              <button id="downloadAllBtn" class="action-button secondary" type="button">전체 CSV</button>
+              <button id="resetTodayBtn" class="action-button danger" type="button">오늘 초기화</button>
+            </div>
+          </article>
+
+          <article class="panel teacher-panel teacher-approval-panel">
+            <div class="approval-strip">
+              <div class="approval-copy">
+                <p class="approval-label">교사 승인</p>
+                <strong id="approvalSummary">승인 대기 0명</strong>
+                <p id="approvalStatusText" class="approval-status-text">
+                  미션 성공 학생을 한 번에 승인할 수 있습니다.
+                </p>
+              </div>
+              <div class="approval-metrics">
+                <div class="approval-metric">
+                  <span>대기</span>
+                  <strong id="pendingApprovalCount">0명</strong>
+                </div>
+                <div class="approval-metric">
+                  <span>완료</span>
+                  <strong id="approvedCount">0명</strong>
+                </div>
+              </div>
+              <button id="approveAllBtn" class="action-button approval-button" type="button">
+                성공 학생 일괄 승인
+              </button>
+            </div>
+          </article>
+        </section>
+
+        <form id="settingsForm" class="settings-form">
+          <section class="settings-section">
+            <div class="settings-title-row">
+              <h3>기본 정보</h3>
+              <p>학교명, 학급명, 독서 기준 시간을 정합니다.</p>
+            </div>
+
+            <div class="api-grid">
+              <label class="field">
+                <span>학교 이름</span>
+                <input type="text" name="schoolName" placeholder="예: 서울신답초등학교">
+              </label>
+              <label class="field">
+                <span>학급 이름</span>
+                <input type="text" name="className" placeholder="예: 4학년 5반">
+              </label>
+              <label class="field">
+                <span>기본 독서 시간(분)</span>
+                <input type="number" name="baseMinutes" min="1" max="120" step="1">
+              </label>
+              <label class="field">
+                <span>조기 복귀 추가 시간(분)</span>
+                <input type="number" name="penaltyMinutes" min="1" max="20" step="1">
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-title-row">
+              <h3>학생 화면 문구</h3>
+              <p>오늘 학생들에게 보여 줄 안내와 공지를 입력합니다.</p>
+            </div>
+
+            <label class="field">
+              <span>오늘의 알림</span>
+              <textarea name="todayAlert" rows="3" placeholder="예: 받아쓰기 시험, 준비물, 안내 사항"></textarea>
+            </label>
+
+            <label class="field">
+              <span>중요사항</span>
+              <textarea name="importantNotice" rows="4" placeholder="예: 체육복, 현장체험학습, 반 전체 공지"></textarea>
+            </label>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-title-row">
+              <h3>학생 목록</h3>
+              <p>
+                한 줄에 한 명씩 입력합니다. 형식은 <code>번호</code>, <code>번호,이름</code>,
+                <code>번호,이름,별명</code> 중 하나면 됩니다.
+              </p>
+            </div>
+
+            <div class="api-grid">
+              <label class="field field-span-2">
+                <span>학생 목록</span>
+                <textarea
+                  name="studentRoster"
+                  rows="8"
+                  placeholder="1,김민수,민수&#10;2,이서준&#10;3&#10;4,박도윤,도윤"
+                ></textarea>
+              </label>
+              <label class="field">
+                <span>카드 표시 방식</span>
+                <select name="studentDisplayMode">
+                  <option value="number">번호만</option>
+                  <option value="name">번호 + 이름</option>
+                  <option value="nickname">번호 + 별명</option>
+                  <option value="name-or-nickname">번호 + 이름 우선, 없으면 별명</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>안내</span>
+                <input type="text" value="학생 수가 바뀌면 보드가 자동으로 다시 배치됩니다." readonly>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-title-row">
+              <h3>요일별 시간표</h3>
+              <p>한 줄에 한 교시씩 입력하면 오늘 요일의 시간표만 메인 화면에 표시됩니다.</p>
+            </div>
+
+            <div class="weekday-fields">
+              <label class="field">
+                <span>월요일</span>
+                <textarea name="schedule-monday" rows="5" placeholder="1교시 국어&#10;2교시 수학&#10;3교시 체육"></textarea>
+              </label>
+              <label class="field">
+                <span>화요일</span>
+                <textarea name="schedule-tuesday" rows="5"></textarea>
+              </label>
+              <label class="field">
+                <span>수요일</span>
+                <textarea name="schedule-wednesday" rows="5"></textarea>
+              </label>
+              <label class="field">
+                <span>목요일</span>
+                <textarea name="schedule-thursday" rows="5"></textarea>
+              </label>
+              <label class="field">
+                <span>금요일</span>
+                <textarea name="schedule-friday" rows="5"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-title-row">
+              <h3>포인트 승인 연동</h3>
+              <p>
+                교사가 일괄 승인할 때만 학생별로 POST 요청을 보냅니다. 사용하지 않으면 체크를 끄면 됩니다.
+              </p>
+            </div>
+
+            <label class="toggle-field">
+              <input type="checkbox" name="rewardEnabled">
+              <span>승인 시 API 사용</span>
+            </label>
+
+            <div class="api-grid">
+              <label class="field field-span-2">
+                <span>승인 API URL 또는 기본 URL</span>
+                <input type="text" name="rewardApiUrl" placeholder="예: https://growndcard.com 또는 https://growndcard.com/api/v1/classes/{classId}/students/{studentCode}/points">
+              </label>
+              <label class="field">
+                <span>API 키 헤더 이름</span>
+                <input type="text" name="rewardApiKeyHeader" placeholder="예: X-API-Key">
+              </label>
+              <label class="field">
+                <span>API 키</span>
+                <input type="text" name="rewardApiKey" placeholder="예: sk_live_xxx">
+              </label>
+              <label class="field">
+                <span>반 ID</span>
+                <input type="text" name="rewardClassId" placeholder="예: 그라운드 classId">
+              </label>
+              <label class="field">
+                <span>승인 점수</span>
+                <input type="number" name="rewardPoints" min="1" max="1000" step="1">
+              </label>
+              <label class="field field-span-2">
+                <span>승인 사유</span>
+                <input type="text" name="rewardReason" placeholder="예: 아침 독서 미션 성공">
+              </label>
+            </div>
+
+            <p class="helper-copy">
+              그라운드 기본값은 <code>X-API-Key</code> 헤더와
+              <code>https://growndcard.com/api/v1/classes/{classId}/students/{studentCode}/points</code> 입니다.
+              학생 번호를 <code>studentCode</code>로 사용하고, 본문은 <code>type</code>, <code>points</code>,
+              <code>description</code>, <code>source</code>, <code>metadata</code> 형식으로 보냅니다.
+            </p>
+          </section>
+
+          <div class="settings-actions">
+            <button class="action-button" type="submit">저장</button>
+            <button id="cancelSettingsBtn" class="action-button secondary" type="button">취소</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
