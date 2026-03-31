@@ -343,17 +343,18 @@ h3 {
 
 .schedule-list {
   min-height: 0;
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  align-content: stretch;
+  align-content: start;
 }
 
 .schedule-list.is-long {
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .schedule-list.is-very-long {
@@ -408,6 +409,22 @@ h3 {
 .schedule-list.is-very-long .schedule-item {
   padding: 8px 10px;
   gap: 6px;
+}
+
+.schedule-list.is-long .schedule-item {
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+.schedule-list.is-long .schedule-subject {
+  font-size: 0.76rem;
+}
+
+.schedule-list.is-long .schedule-period {
+  flex-basis: 22px;
+  width: 22px;
+  height: 22px;
+  font-size: 0.68rem;
 }
 
 .schedule-list.is-very-long .schedule-subject {
