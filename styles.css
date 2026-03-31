@@ -79,7 +79,7 @@ body::after {
   margin: 0 auto;
   padding: clamp(14px, 1.5vw, 24px);
   display: grid;
-  grid-template-rows: minmax(82px, 0.23fr) minmax(96px, 0.29fr) minmax(0, 3.05fr);
+  grid-template-rows: minmax(82px, 0.22fr) minmax(132px, 0.44fr) minmax(0, 2.9fr);
   gap: clamp(8px, 0.8vw, 12px);
 }
 
@@ -286,11 +286,11 @@ h3 {
 
 .info-ribbon {
   display: grid;
-  grid-template-columns: minmax(0, 1.14fr) minmax(0, 0.86fr);
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr);
   gap: clamp(8px, 0.75vw, 12px);
 }
 
-.today-overview-panel,
+.schedule-focus-panel,
 .schedule-panel {
   display: grid;
   grid-template-rows: auto 1fr;
@@ -311,52 +311,15 @@ h3 {
   font-size: 0.7rem;
 }
 
-.today-overview-panel {
+.schedule-focus-panel {
   background:
     radial-gradient(circle at top right, rgba(255, 223, 160, 0.24), rgba(255, 223, 160, 0) 36%),
     radial-gradient(circle at bottom left, rgba(182, 228, 232, 0.24), rgba(182, 228, 232, 0) 34%),
     rgba(255, 250, 240, 0.95);
 }
 
-.today-overview-grid {
-  min-height: 0;
-  margin-top: 8px;
-  display: grid;
-  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
-  gap: 10px;
-}
-
-.today-overview-block {
-  min-height: 0;
-  padding: 10px 12px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.64);
-  border: 1px solid rgba(22, 52, 60, 0.08);
-}
-
-.today-overview-head {
-  display: flex;
+.schedule-focus-head {
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.today-overview-head h3 {
-  font-size: 0.86rem;
-  color: var(--brand-soft);
-}
-
-.today-overview-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 20px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: rgba(21, 79, 92, 0.08);
-  color: var(--brand-soft);
-  font-size: 0.66rem;
-  font-weight: 800;
 }
 
 .important-panel {
@@ -365,18 +328,10 @@ h3 {
     rgba(255, 251, 247, 0.95);
 }
 
-.highlight-copy,
 .panel-copy,
 .helper-copy {
   white-space: pre-line;
   line-height: 1.6;
-}
-
-.highlight-copy {
-  margin-top: 8px;
-  font-size: clamp(0.82rem, 0.82vw, 0.9rem);
-  font-weight: 800;
-  line-height: 1.42;
 }
 
 .panel-copy,
@@ -388,31 +343,31 @@ h3 {
 
 .schedule-list {
   min-height: 0;
-  margin: 2px 0 0;
+  margin: 10px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  align-content: start;
+  gap: 8px;
+  align-content: stretch;
 }
 
 .schedule-list.is-long {
-  gap: 5px;
+  gap: 8px;
 }
 
 .schedule-list.is-very-long {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  gap: 6px;
 }
 
 .schedule-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  padding: 6px 8px;
-  border-radius: 14px;
+  padding: 10px 12px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(22, 52, 60, 0.08);
 }
@@ -420,50 +375,50 @@ h3 {
 .schedule-subject {
   min-width: 0;
   overflow: hidden;
-  font-size: 0.74rem;
+  font-size: 0.86rem;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .schedule-period {
-  flex: 0 0 22px;
+  flex: 0 0 26px;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
   background: rgba(21, 79, 92, 0.1);
   color: var(--brand);
   font-weight: 800;
-  font-size: 0.68rem;
+  font-size: 0.8rem;
 }
 
 .schedule-empty {
   grid-column: 1 / -1;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.62);
   color: var(--text-soft);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   line-height: 1.24;
 }
 
 .schedule-list.is-very-long .schedule-item {
-  padding: 5px 6px;
-  gap: 5px;
+  padding: 8px 10px;
+  gap: 6px;
 }
 
 .schedule-list.is-very-long .schedule-subject {
-  font-size: 0.68rem;
+  font-size: 0.74rem;
 }
 
 .schedule-list.is-very-long .schedule-period {
-  flex-basis: 18px;
-  width: 18px;
-  height: 18px;
-  font-size: 0.6rem;
+  flex-basis: 22px;
+  width: 22px;
+  height: 22px;
+  font-size: 0.68rem;
 }
 
 .board-panel {
@@ -933,14 +888,15 @@ h3 {
 }
 
 .reading-cancel-button {
-  min-height: 30px;
-  padding: 0 10px;
-  border-radius: 10px;
-  background: rgba(180, 78, 65, 0.12);
-  color: var(--danger);
-  font-size: 0.76rem;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #c55a47, #de7a57);
+  color: #fff;
+  font-size: 0.8rem;
   font-weight: 800;
   white-space: nowrap;
+  box-shadow: 0 10px 18px rgba(180, 78, 65, 0.2);
 }
 
 .action-strip {

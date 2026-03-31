@@ -48,28 +48,12 @@
       </header>
 
       <section class="info-ribbon">
-        <article class="panel info-panel today-overview-panel">
-          <div class="section-head">
-            <h2>오늘 안내</h2>
+        <article class="panel info-panel schedule-focus-panel">
+          <div class="section-head schedule-focus-head">
+            <h2>오늘 시간표</h2>
             <span id="weekdayLabel" class="section-chip">-</span>
           </div>
-          <div class="today-overview-grid">
-            <section class="today-overview-block" aria-labelledby="todayAlertTitle">
-              <div class="today-overview-head">
-                <h3 id="todayAlertTitle">오늘의 알림</h3>
-                <span class="today-overview-chip">한눈에</span>
-              </div>
-              <p id="todayAlertText" class="highlight-copy"></p>
-            </section>
-
-            <section class="today-overview-block schedule-panel" aria-labelledby="scheduleTitle">
-              <div class="today-overview-head">
-                <h3 id="scheduleTitle">오늘 시간표</h3>
-                <span class="today-overview-chip">반폭 보기</span>
-              </div>
-              <ul id="scheduleList" class="schedule-list"></ul>
-            </section>
-          </div>
+          <ul id="scheduleList" class="schedule-list"></ul>
         </article>
 
         <article class="panel info-panel important-panel">
@@ -222,7 +206,7 @@
                 <span>안내</span>
                 <input
                   type="text"
-                  value="읽는 중 학생 목록의 작은 취소 버튼을 누르면 이 비밀번호를 확인합니다."
+                  value="읽는 중 학생 목록의 번호 취소 버튼을 누르면 이 비밀번호를 확인합니다."
                   readonly
                 >
               </label>
@@ -231,14 +215,9 @@
 
           <section class="settings-section">
             <div class="settings-title-row">
-              <h3>학생 화면 문구</h3>
-              <p>오늘 학생들에게 보여 줄 안내와 공지를 입력합니다.</p>
+              <h3>학생 화면 공지</h3>
+              <p>메인 화면 오른쪽 공지 영역에 보여 줄 내용을 입력합니다.</p>
             </div>
-
-            <label class="field">
-              <span>오늘의 알림</span>
-              <textarea name="todayAlert" rows="3" placeholder="예: 받아쓰기 시험, 준비물, 안내 사항"></textarea>
-            </label>
 
             <label class="field">
               <span>중요사항</span>

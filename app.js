@@ -89,7 +89,6 @@ const elements = {
   pendingApprovalCount: document.getElementById("pendingApprovalCount"),
   approvedCount: document.getElementById("approvedCount"),
   weekdayLabel: document.getElementById("weekdayLabel"),
-  todayAlertText: document.getElementById("todayAlertText"),
   importantNoticeText: document.getElementById("importantNoticeText"),
   scheduleList: document.getElementById("scheduleList"),
   notice: document.getElementById("notice"),
@@ -236,8 +235,6 @@ function renderApproval() {
 }
 
 function renderAlerts() {
-  const todayAlert = settingsState.dailyAlerts[activeDateKey]?.trim();
-  elements.todayAlertText.textContent = todayAlert || "오늘 알림이 없습니다.";
   elements.importantNoticeText.textContent = settingsState.importantNotice || "중요한 공지가 없습니다.";
 }
 
@@ -282,8 +279,8 @@ function renderReadingStudents() {
 
   elements.readingStudentsLabel.textContent = `${readingStudents.length}명`;
   elements.readingStudentsHelp.textContent = canCancelReading
-    ? "잘못 누른 번호만 작은 취소 버튼으로 되돌릴 수 있습니다."
-    : "교사 설정에 관리자 비밀번호를 저장하면 번호 취소를 사용할 수 있습니다.";
+    ? "각 줄 오른쪽의 번호 취소 버튼으로 잘못 누른 번호만 되돌릴 수 있습니다."
+    : "관리자 비밀번호를 먼저 저장한 뒤 각 줄 오른쪽의 번호 취소 버튼을 누르세요.";
 
   if (readingStudents.length === 0) {
     elements.readingStudentsList.innerHTML = `
@@ -297,9 +294,7 @@ function renderReadingStudents() {
       const displayName = getStudentDisplayName(student);
       const studentLabel = `${student.number}번${displayName ? ` ${displayName}` : ""}`;
       const startedLabel = entry.startedAt ? `시작 ${formatTime(entry.startedAt)}` : "방금 시작";
-      const cancelButtonAttrs = canCancelReading
-        ? ""
-        : ' disabled aria-disabled="true" title="관리자 비밀번호를 먼저 저장하세요."';
+      const passwordHint = canCancelReading ? "" : " title=\"관리자 비밀번호를 먼저 저장하세요.\"";
 
       return `
         <li class="reading-item">
@@ -310,9 +305,9 @@ function renderReadingStudents() {
           <button
             type="button"
             class="inline-button reading-cancel-button"
-            data-reading-cancel="${escapeHtml(student.id)}"${cancelButtonAttrs}
+            data-reading-cancel="${escapeHtml(student.id)}"${passwordHint}
           >
-            취소
+            번호 취소
           </button>
         </li>
       `;
@@ -734,7 +729,6 @@ function populateSettingsForm() {
   setFieldValue(form, "adminPassword", getAdminPassword());
   setFieldValue(form, "studentRoster", rosterToTextareaValue(settingsState.students.roster));
   setFieldValue(form, "studentDisplayMode", settingsState.students.displayMode);
-  setFieldValue(form, "todayAlert", settingsState.dailyAlerts[activeDateKey] || "");
   setFieldValue(form, "importantNotice", settingsState.importantNotice || "");
   setFieldValue(form, "schedule-monday", toTextareaValue(settingsState.schedules.monday));
   setFieldValue(form, "schedule-tuesday", toTextareaValue(settingsState.schedules.tuesday));
@@ -754,14 +748,6 @@ function handleSettingsSubmit(event) {
   event.preventDefault();
 
   const form = event.currentTarget;
-  const nextDailyAlerts = { ...settingsState.dailyAlerts };
-  const todayAlert = getFieldValue(form, "todayAlert").trim();
-
-  if (todayAlert) {
-    nextDailyAlerts[activeDateKey] = todayAlert;
-  } else {
-    delete nextDailyAlerts[activeDateKey];
-  }
 
   settingsState = {
     general: {
@@ -778,7 +764,7 @@ function handleSettingsSubmit(event) {
       displayMode: normalizeStudentDisplayMode(getFieldValue(form, "studentDisplayMode")),
     },
     importantNotice: getFieldValue(form, "importantNotice").trim(),
-    dailyAlerts: nextDailyAlerts,
+    dailyAlerts: settingsState.dailyAlerts,
     schedules: {
       monday: parseLines(getFieldValue(form, "schedule-monday")),
       tuesday: parseLines(getFieldValue(form, "schedule-tuesday")),
