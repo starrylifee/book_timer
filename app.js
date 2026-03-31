@@ -66,6 +66,9 @@ const DEFAULT_SETTINGS = {
     points: 10,
     reason: "아침 독서 미션 성공",
   },
+  security: {
+    adminPassword: "",
+  },
 };
 
 const elements = {
@@ -78,6 +81,9 @@ const elements = {
   successCount: document.getElementById("successCount"),
   readingCount: document.getElementById("readingCount"),
   idleCount: document.getElementById("idleCount"),
+  readingStudentsLabel: document.getElementById("readingStudentsLabel"),
+  readingStudentsHelp: document.getElementById("readingStudentsHelp"),
+  readingStudentsList: document.getElementById("readingStudentsList"),
   approvalSummary: document.getElementById("approvalSummary"),
   approvalStatusText: document.getElementById("approvalStatusText"),
   pendingApprovalCount: document.getElementById("pendingApprovalCount"),
@@ -97,12 +103,19 @@ const elements = {
   resetTodayBtn: document.getElementById("resetTodayBtn"),
   settingsOverlay: document.getElementById("settingsOverlay"),
   settingsForm: document.getElementById("settingsForm"),
+  adminPromptOverlay: document.getElementById("adminPromptOverlay"),
+  adminPromptForm: document.getElementById("adminPromptForm"),
+  adminPromptMessage: document.getElementById("adminPromptMessage"),
+  adminPasswordInput: document.getElementById("adminPasswordInput"),
+  closeAdminPromptBtn: document.getElementById("closeAdminPromptBtn"),
+  cancelAdminPromptBtn: document.getElementById("cancelAdminPromptBtn"),
 };
 
 const appState = loadJsonWithLegacy(RECORDS_KEY, LEGACY_RECORDS_KEYS, { records: {} });
 let settingsState = loadSettings();
 let activeDateKey = getTodayKey();
 let noticeTimerId = null;
+let pendingCancelStudentId = "";
 
 initialize();
 
@@ -115,6 +128,7 @@ function initialize() {
 
 function bindEvents() {
   elements.board.addEventListener("click", handleBoardTouch);
+  elements.readingStudentsList.addEventListener("click", handleReadingListAction);
   elements.approveAllBtn.addEventListener("click", () => {
     void approveCompletedStudents();
   });
@@ -126,9 +140,17 @@ function bindEvents() {
   elements.closeSettingsBtn.addEventListener("click", closeSettings);
   elements.cancelSettingsBtn.addEventListener("click", closeSettings);
   elements.settingsForm.addEventListener("submit", handleSettingsSubmit);
+  elements.adminPromptForm.addEventListener("submit", handleAdminPromptSubmit);
+  elements.closeAdminPromptBtn.addEventListener("click", closeAdminPrompt);
+  elements.cancelAdminPromptBtn.addEventListener("click", closeAdminPrompt);
   elements.settingsOverlay.addEventListener("click", (event) => {
     if (event.target === elements.settingsOverlay) {
       closeSettings();
+    }
+  });
+  elements.adminPromptOverlay.addEventListener("click", (event) => {
+    if (event.target === elements.adminPromptOverlay) {
+      closeAdminPrompt();
     }
   });
   document.addEventListener("visibilitychange", () => {
@@ -137,7 +159,16 @@ function bindEvents() {
     }
   });
   window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !elements.settingsOverlay.hidden) {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    if (!elements.adminPromptOverlay.hidden) {
+      closeAdminPrompt();
+      return;
+    }
+
+    if (!elements.settingsOverlay.hidden) {
       closeSettings();
     }
   });
@@ -147,6 +178,7 @@ function bindEvents() {
 function renderAll() {
   renderGeneral();
   renderSummary();
+  renderReadingStudents();
   renderApproval();
   renderAlerts();
   renderSchedule();
@@ -227,14 +259,64 @@ function renderSchedule() {
   }
 
   elements.scheduleList.innerHTML = scheduleItems
-    .map(
-      (item, index) => `
-        <li class="schedule-item">
-          <span class="schedule-index">${index + 1}</span>
-          <span>${escapeHtml(item)}</span>
+    .map((item, index) => {
+      const scheduleEntry = formatScheduleItem(item, index);
+      const itemLabel = `${scheduleEntry.period}교시 ${scheduleEntry.subject}`.trim();
+
+      return `
+        <li class="schedule-item" aria-label="${escapeHtml(itemLabel)}">
+          <span class="schedule-period">${escapeHtml(scheduleEntry.period)}</span>
+          <span class="schedule-subject">${escapeHtml(scheduleEntry.subject)}</span>
         </li>
-      `
-    )
+      `;
+    })
+    .join("");
+}
+
+function renderReadingStudents() {
+  const todayRecord = getTodayRecord();
+  const readingStudents = getStudentRoster()
+    .map((student) => ({ student, entry: todayRecord[student.id] }))
+    .filter(({ entry }) => entry?.status === "reading");
+  const canCancelReading = hasAdminPassword();
+
+  elements.readingStudentsLabel.textContent = `${readingStudents.length}명`;
+  elements.readingStudentsHelp.textContent = canCancelReading
+    ? "잘못 누른 번호만 작은 취소 버튼으로 되돌릴 수 있습니다."
+    : "교사 설정에 관리자 비밀번호를 저장하면 번호 취소를 사용할 수 있습니다.";
+
+  if (readingStudents.length === 0) {
+    elements.readingStudentsList.innerHTML = `
+      <li class="reading-empty">지금은 읽는 중인 학생이 없습니다.</li>
+    `;
+    return;
+  }
+
+  elements.readingStudentsList.innerHTML = readingStudents
+    .map(({ student, entry }) => {
+      const displayName = getStudentDisplayName(student);
+      const studentLabel = `${student.number}번${displayName ? ` ${displayName}` : ""}`;
+      const startedLabel = entry.startedAt ? `시작 ${formatTime(entry.startedAt)}` : "방금 시작";
+      const cancelButtonAttrs = canCancelReading
+        ? ""
+        : ' disabled aria-disabled="true" title="관리자 비밀번호를 먼저 저장하세요."';
+
+      return `
+        <li class="reading-item">
+          <div class="reading-student">
+            <strong>${escapeHtml(studentLabel)}</strong>
+            <span>${escapeHtml(startedLabel)}</span>
+          </div>
+          <button
+            type="button"
+            class="inline-button reading-cancel-button"
+            data-reading-cancel="${escapeHtml(student.id)}"${cancelButtonAttrs}
+          >
+            취소
+          </button>
+        </li>
+      `;
+    })
     .join("");
 }
 
@@ -343,6 +425,102 @@ function handleBoardTouch(event) {
     "warning",
     { duration: 3200, speak: true }
   );
+}
+
+function handleReadingListAction(event) {
+  const button = event.target.closest("[data-reading-cancel]");
+
+  if (!button) {
+    return;
+  }
+
+  requestReadingCancel(button.dataset.readingCancel);
+}
+
+function requestReadingCancel(studentId) {
+  syncDateIfNeeded();
+
+  const targetId = String(studentId || "").trim();
+  const student = getStudentById(targetId);
+  const entry = getTodayRecord()[targetId];
+
+  if (!student || entry?.status !== "reading") {
+    renderAll();
+    showNotice("이미 읽는 중 상태가 아니라서 취소할 수 없습니다.", "default");
+    return;
+  }
+
+  if (!hasAdminPassword()) {
+    showNotice("교사 설정에서 관리자 비밀번호를 먼저 저장해 주세요.", "warning", { duration: 2600 });
+    return;
+  }
+
+  const displayName = getStudentDisplayName(student);
+  const studentLabel = `${student.number}번${displayName ? ` ${displayName}` : ""}`;
+
+  pendingCancelStudentId = targetId;
+  elements.adminPromptMessage.textContent = `${studentLabel} 학생의 읽는 중 상태를 취소하려면 관리자 비밀번호를 입력하세요.`;
+  elements.adminPromptForm.reset();
+  elements.adminPromptOverlay.hidden = false;
+  window.setTimeout(() => {
+    elements.adminPasswordInput.focus();
+  }, 0);
+}
+
+function handleAdminPromptSubmit(event) {
+  event.preventDefault();
+
+  const studentId = pendingCancelStudentId;
+  const password = elements.adminPasswordInput.value;
+
+  if (!studentId) {
+    closeAdminPrompt();
+    return;
+  }
+
+  if (password !== getAdminPassword()) {
+    showNotice("관리자 비밀번호가 올바르지 않습니다.", "warning", { duration: 2200 });
+    elements.adminPasswordInput.select();
+    return;
+  }
+
+  closeAdminPrompt();
+  cancelReadingForStudent(studentId);
+}
+
+function closeAdminPrompt() {
+  pendingCancelStudentId = "";
+  elements.adminPromptOverlay.hidden = true;
+  elements.adminPromptForm.reset();
+}
+
+function cancelReadingForStudent(studentId) {
+  const targetId = String(studentId || "").trim();
+  const todayRecord = getTodayRecord();
+  const student = getStudentById(targetId);
+  const entry = todayRecord[targetId];
+
+  if (!student || entry?.status !== "reading") {
+    renderAll();
+    showNotice("이미 읽는 중 상태가 아니라서 취소할 수 없습니다.", "default");
+    return;
+  }
+
+  const canceledAt = new Date().toISOString();
+  const nextHistory = Array.isArray(entry.history) ? [...entry.history] : [];
+  nextHistory.push({
+    type: "cancelled_by_admin",
+    at: canceledAt,
+  });
+
+  todayRecord[targetId] = {
+    ...createBlankEntry(),
+    history: nextHistory,
+  };
+
+  persistRecords();
+  renderAll();
+  showNotice(`${student.number}번 읽는 중 상태를 취소했습니다.`, "default");
 }
 
 async function approveCompletedStudents() {
@@ -538,10 +716,12 @@ function getCopyText(entry) {
 
 function openSettings() {
   populateSettingsForm();
+  renderReadingStudents();
   elements.settingsOverlay.hidden = false;
 }
 
 function closeSettings() {
+  closeAdminPrompt();
   elements.settingsOverlay.hidden = true;
 }
 
@@ -551,6 +731,7 @@ function populateSettingsForm() {
   setFieldValue(form, "className", settingsState.general.className);
   setFieldValue(form, "baseMinutes", settingsState.general.baseMinutes);
   setFieldValue(form, "penaltyMinutes", settingsState.general.penaltyMinutes);
+  setFieldValue(form, "adminPassword", getAdminPassword());
   setFieldValue(form, "studentRoster", rosterToTextareaValue(settingsState.students.roster));
   setFieldValue(form, "studentDisplayMode", settingsState.students.displayMode);
   setFieldValue(form, "todayAlert", settingsState.dailyAlerts[activeDateKey] || "");
@@ -588,6 +769,9 @@ function handleSettingsSubmit(event) {
       className: getFieldValue(form, "className").trim() || DEFAULT_SETTINGS.general.className,
       baseMinutes: clampPositiveInt(getFieldValue(form, "baseMinutes"), DEFAULT_BASE_MINUTES, 1, 120),
       penaltyMinutes: clampPositiveInt(getFieldValue(form, "penaltyMinutes"), DEFAULT_PENALTY_MINUTES, 1, 20),
+    },
+    security: {
+      adminPassword: getFieldValue(form, "adminPassword"),
     },
     students: {
       roster: parseStudentRosterText(getFieldValue(form, "studentRoster")),
@@ -940,6 +1124,14 @@ function loadSettings() {
           ? loaded.rewards.reason
           : DEFAULT_SETTINGS.rewards.reason,
     },
+    security: {
+      adminPassword:
+        typeof loaded.security?.adminPassword === "string"
+          ? loaded.security.adminPassword
+          : typeof loaded.adminPassword === "string"
+            ? loaded.adminPassword
+            : DEFAULT_SETTINGS.security.adminPassword,
+    },
   };
 }
 
@@ -1000,6 +1192,14 @@ function getPenaltyMinutes() {
 
 function getRewardPoints() {
   return clampPositiveInt(settingsState.rewards?.points, DEFAULT_SETTINGS.rewards.points, 1, 1000);
+}
+
+function getAdminPassword() {
+  return typeof settingsState.security?.adminPassword === "string" ? settingsState.security.adminPassword : "";
+}
+
+function hasAdminPassword() {
+  return Boolean(getAdminPassword());
 }
 
 function getStudentRoster() {
@@ -1092,6 +1292,10 @@ function formatHistory(history) {
         return `전송실패 ${formatTime(item.at)} (${item.message || "오류"})`;
       }
 
+      if (item.type === "cancelled_by_admin") {
+        return `관리자취소 ${formatTime(item.at)}`;
+      }
+
       return `조기터치 ${formatTime(item.at)} (최종 ${item.requiredMinutes}분)`;
     })
     .join(" | ");
@@ -1157,6 +1361,22 @@ function formatElapsedDuration(milliseconds) {
   }
 
   return `${minutes}분 ${seconds}초`;
+}
+
+function formatScheduleItem(item, index) {
+  const compactText = String(item || "").trim().replace(/\s+/g, " ");
+  const matched = compactText.match(/^(\d+)\s*(?:교시)?\s*(.*)$/);
+
+  if (matched) {
+    const period = matched[1];
+    const subject = matched[2]?.trim() || compactText;
+    return { period, subject };
+  }
+
+  return {
+    period: String(index + 1),
+    subject: compactText,
+  };
 }
 
 function parseLines(text) {

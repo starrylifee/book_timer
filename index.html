@@ -48,20 +48,28 @@
       </header>
 
       <section class="info-ribbon">
-        <article class="panel info-panel today-alert-panel">
+        <article class="panel info-panel today-overview-panel">
           <div class="section-head">
-            <h2>오늘의 알림</h2>
-            <span class="section-chip">오늘 꼭 보기</span>
+            <h2>오늘 안내</h2>
+            <span id="weekdayLabel" class="section-chip">-</span>
           </div>
-          <p id="todayAlertText" class="highlight-copy"></p>
-        </article>
+          <div class="today-overview-grid">
+            <section class="today-overview-block" aria-labelledby="todayAlertTitle">
+              <div class="today-overview-head">
+                <h3 id="todayAlertTitle">오늘의 알림</h3>
+                <span class="today-overview-chip">한눈에</span>
+              </div>
+              <p id="todayAlertText" class="highlight-copy"></p>
+            </section>
 
-        <article class="panel info-panel schedule-panel">
-          <div class="section-head">
-            <h2>오늘 시간표</h2>
-            <span id="weekdayLabel" class="section-chip"></span>
+            <section class="today-overview-block schedule-panel" aria-labelledby="scheduleTitle">
+              <div class="today-overview-head">
+                <h3 id="scheduleTitle">오늘 시간표</h3>
+                <span class="today-overview-chip">반폭 보기</span>
+              </div>
+              <ul id="scheduleList" class="schedule-list"></ul>
+            </section>
           </div>
-          <ul id="scheduleList" class="schedule-list"></ul>
         </article>
 
         <article class="panel info-panel important-panel">
@@ -132,6 +140,15 @@
             </div>
           </article>
 
+          <article class="panel teacher-panel teacher-reading-panel">
+            <div class="section-head">
+              <h3>읽는 중 학생</h3>
+              <span id="readingStudentsLabel" class="section-chip">0명</span>
+            </div>
+            <p id="readingStudentsHelp" class="helper-copy teacher-helper-copy"></p>
+            <ul id="readingStudentsList" class="reading-list" aria-live="polite"></ul>
+          </article>
+
           <article class="panel teacher-panel teacher-approval-panel">
             <div class="approval-strip">
               <div class="approval-copy">
@@ -181,6 +198,33 @@
               <label class="field">
                 <span>조기 복귀 추가 시간(분)</span>
                 <input type="number" name="penaltyMinutes" min="1" max="20" step="1">
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-title-row">
+              <h3>관리자 비밀번호</h3>
+              <p>읽는 중 학생의 번호를 취소할 때 확인용으로 사용합니다.</p>
+            </div>
+
+            <div class="api-grid">
+              <label class="field">
+                <span>관리자 비밀번호</span>
+                <input
+                  type="password"
+                  name="adminPassword"
+                  autocomplete="current-password"
+                  placeholder="읽는 중 취소 확인에 사용할 비밀번호"
+                >
+              </label>
+              <label class="field">
+                <span>안내</span>
+                <input
+                  type="text"
+                  value="읽는 중 학생 목록의 작은 취소 버튼을 누르면 이 비밀번호를 확인합니다."
+                  readonly
+                >
               </label>
             </div>
           </section>
@@ -317,6 +361,35 @@
           <div class="settings-actions">
             <button class="action-button" type="submit">저장</button>
             <button id="cancelSettingsBtn" class="action-button secondary" type="button">취소</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div id="adminPromptOverlay" class="overlay" hidden>
+      <section class="password-dialog" role="dialog" aria-modal="true" aria-labelledby="adminPromptTitle">
+        <div class="settings-head">
+          <div>
+            <p class="settings-label">읽는 중 취소</p>
+            <h2 id="adminPromptTitle">관리자 비밀번호 확인</h2>
+          </div>
+          <button id="closeAdminPromptBtn" class="ghost-button" type="button">닫기</button>
+        </div>
+        <p id="adminPromptMessage" class="panel-copy password-message"></p>
+        <form id="adminPromptForm" class="password-form">
+          <label class="field">
+            <span>비밀번호</span>
+            <input
+              id="adminPasswordInput"
+              type="password"
+              name="adminPasswordConfirm"
+              autocomplete="current-password"
+              required
+            >
+          </label>
+          <div class="settings-actions">
+            <button class="action-button" type="submit">번호 취소</button>
+            <button id="cancelAdminPromptBtn" class="action-button secondary" type="button">닫기</button>
           </div>
         </form>
       </section>
