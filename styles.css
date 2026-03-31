@@ -79,7 +79,7 @@ body::after {
   margin: 0 auto;
   padding: clamp(14px, 1.5vw, 24px);
   display: grid;
-  grid-template-rows: minmax(82px, 0.22fr) minmax(132px, 0.44fr) minmax(0, 2.9fr);
+  grid-template-rows: minmax(96px, 0.25fr) minmax(128px, 0.42fr) minmax(0, 2.85fr);
   gap: clamp(8px, 0.8vw, 12px);
 }
 
@@ -134,7 +134,7 @@ body::after {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(420px, 0.82fr);
   gap: clamp(8px, 0.8vw, 14px);
-  padding: clamp(10px, 0.9vw, 14px);
+  padding: clamp(12px, 1vw, 16px);
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0) 34%),
     linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(255, 246, 234, 0.92));
@@ -152,7 +152,8 @@ body::after {
   display: grid;
   align-content: center;
   overflow: hidden;
-  padding-left: clamp(6px, 0.45vw, 10px);
+  gap: 4px;
+  padding: 4px 0 4px clamp(6px, 0.45vw, 10px);
 }
 
 .hero-topline,
@@ -206,9 +207,9 @@ p {
 }
 
 h1 {
-  margin-top: 4px;
-  font-size: clamp(1.46rem, 1.8vw, 1.9rem);
-  line-height: 1.04;
+  margin-top: 0;
+  font-size: clamp(1.42rem, 1.72vw, 1.86rem);
+  line-height: 1.14;
   letter-spacing: -0.035em;
 }
 
@@ -225,12 +226,12 @@ h3 {
 }
 
 .summary-copy {
-  margin-top: 4px;
+  margin-top: 0;
   max-width: none;
   overflow: hidden;
   color: var(--text-soft);
   font-size: clamp(0.82rem, 0.82vw, 0.9rem);
-  line-height: 1.28;
+  line-height: 1.32;
   padding-left: 1px;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -240,14 +241,14 @@ h3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: 1fr;
-  gap: 6px;
+  gap: 5px;
   align-content: center;
 }
 
 .step-card {
   position: relative;
   min-width: 0;
-  padding: 8px 9px 8px 35px;
+  padding: 7px 8px 7px 33px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(22, 52, 60, 0.08);
@@ -255,23 +256,23 @@ h3 {
 
 .step-number {
   position: absolute;
-  top: 8px;
-  left: 9px;
+  top: 7px;
+  left: 8px;
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 19px;
+  height: 19px;
   border-radius: 8px;
   background: rgba(21, 79, 92, 0.12);
   color: var(--brand);
   font-weight: 900;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
 }
 
 .step-card strong {
   display: block;
   overflow: hidden;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   line-height: 1.14;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -280,8 +281,8 @@ h3 {
 .step-card p {
   margin-top: 2px;
   color: var(--text-soft);
-  font-size: 0.7rem;
-  line-height: 1.16;
+  font-size: 0.66rem;
+  line-height: 1.14;
 }
 
 .info-ribbon {
