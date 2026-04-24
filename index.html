@@ -291,6 +291,32 @@
 
           <section class="settings-section">
             <div class="settings-title-row">
+              <h3>점수 체계</h3>
+              <p>독서 시간에 따라 점수를 자동으로 계산합니다. 기본 독서 시간에 도달하면 기본 점수, 1분 늘 때마다 추가 점수가 쌓입니다.</p>
+            </div>
+
+            <label class="toggle-field">
+              <input type="checkbox" name="scoreEnabled">
+              <span>시간 기반 점수 사용 (꺼두면 아래 승인 연동의 고정 승인 점수 사용)</span>
+            </label>
+
+            <div class="api-grid">
+              <label class="field">
+                <span>기본 독서 시간 달성 시 점수</span>
+                <input type="number" name="scoreBasePoints" min="1" max="100" step="1">
+              </label>
+              <label class="field">
+                <span>1분 초과 시마다 추가 점수</span>
+                <input type="number" name="scorePointsPerMinute" min="1" max="100" step="1">
+              </label>
+            </div>
+            <p class="helper-copy">
+              예) 기본 5분, 기본 점수 1, 추가 점수 1이면 → 5분=1점 · 6분=2점 · 7분=3점 · 8분=4점
+            </p>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-title-row">
               <h3>포인트 승인 연동</h3>
               <p>
                 교사가 일괄 승인할 때만 학생별로 POST 요청을 보냅니다. 사용하지 않으면 체크를 끄면 됩니다.

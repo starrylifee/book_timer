@@ -4,6 +4,8 @@ const LEGACY_RECORDS_KEYS = ["sindap-book-mission-records-v2"];
 const LEGACY_SETTINGS_KEYS = ["sindap-book-mission-settings-v2"];
 const DEFAULT_BASE_MINUTES = 5;
 const DEFAULT_PENALTY_MINUTES = 1;
+const DEFAULT_SCORE_BASE_POINTS = 1;
+const DEFAULT_SCORE_POINTS_PER_MINUTE = 1;
 const GROWND_POINTS_API_TEMPLATE = "https://growndcard.com/api/v1/classes/{classId}/students/{studentCode}/points";
 const DEFAULT_REWARD_SOURCE = "morning-reading-board";
 const DEFAULT_STUDENT_ROSTER = [
@@ -65,6 +67,11 @@ const DEFAULT_SETTINGS = {
     classId: "",
     points: 10,
     reason: "아침 독서 미션 성공",
+  },
+  scoring: {
+    enabled: true,
+    basePoints: DEFAULT_SCORE_BASE_POINTS,
+    pointsPerMinute: DEFAULT_SCORE_POINTS_PER_MINUTE,
   },
   security: {
     adminPassword: "",
@@ -199,8 +206,14 @@ function renderGeneral() {
     ? `${title} · 준비가 되면 자기 번호를 한 번 누르고, 차분히 읽은 뒤 같은 번호를 다시 눌러요.`
     : summaryText;
   elements.boardTitle.textContent = "준비되면 자기 번호를 눌러요";
-  elements.boardNote.textContent =
-    `${baseMinutes}분 뒤 성공 · 일찍 누르면 ${penaltyMinutes}분 추가`;
+
+  const scoringEnabled = settingsState.scoring?.enabled ?? DEFAULT_SETTINGS.scoring.enabled;
+  const scoreBasePoints = clampPositiveInt(settingsState.scoring?.basePoints, DEFAULT_SCORE_BASE_POINTS, 1, 100);
+  const scorePointsPerMinute = clampPositiveInt(settingsState.scoring?.pointsPerMinute, DEFAULT_SCORE_POINTS_PER_MINUTE, 1, 100);
+  const scoringNote = scoringEnabled
+    ? ` · ${baseMinutes}분=${scoreBasePoints}점, 분당+${scorePointsPerMinute}점`
+    : "";
+  elements.boardNote.textContent = `${baseMinutes}분 뒤 성공 · 일찍 누르면 ${penaltyMinutes}분 추가${scoringNote}`;
 }
 
 function renderSummary() {
@@ -540,15 +553,17 @@ async function approveCompletedStudents() {
   for (const student of pendingStudents) {
     const entry = todayRecord[student.id];
 
+    const earnedPoints = calcEarnedPoints(entry);
+
     if (!rewardsEnabled) {
-      markStudentApproved(entry, approvedAt, 0, "");
+      markStudentApproved(entry, approvedAt, earnedPoints, "");
       approvedCount += 1;
       continue;
     }
 
     try {
-      await sendReward(student, approvedAt);
-      markStudentApproved(entry, approvedAt, getRewardPoints(), "");
+      await sendReward(student, approvedAt, earnedPoints);
+      markStudentApproved(entry, approvedAt, earnedPoints, "");
       approvedCount += 1;
     } catch (error) {
       entry.rewardSyncError = error instanceof Error ? error.message : "포인트 전송 실패";
@@ -589,7 +604,7 @@ function markStudentApproved(entry, approvedAt, rewardPoints, errorMessage) {
   });
 }
 
-async function sendReward(student, approvedAt) {
+async function sendReward(student, approvedAt, points) {
   const config = settingsState.rewards;
 
   if (!config.apiUrl || !config.classId) {
@@ -607,7 +622,7 @@ async function sendReward(student, approvedAt) {
 
   const payload = {
     type: "reward",
-    points: getRewardPoints(),
+    points: points,
     description: config.reason || DEFAULT_SETTINGS.rewards.reason,
     source: DEFAULT_REWARD_SOURCE,
     metadata: {
@@ -742,6 +757,9 @@ function populateSettingsForm() {
   setFieldValue(form, "rewardClassId", settingsState.rewards.classId);
   setFieldValue(form, "rewardPoints", settingsState.rewards.points);
   setFieldValue(form, "rewardReason", settingsState.rewards.reason);
+  setFieldChecked(form, "scoreEnabled", settingsState.scoring?.enabled ?? DEFAULT_SETTINGS.scoring.enabled);
+  setFieldValue(form, "scoreBasePoints", settingsState.scoring?.basePoints ?? DEFAULT_SCORE_BASE_POINTS);
+  setFieldValue(form, "scorePointsPerMinute", settingsState.scoring?.pointsPerMinute ?? DEFAULT_SCORE_POINTS_PER_MINUTE);
 }
 
 function handleSettingsSubmit(event) {
@@ -780,6 +798,11 @@ function handleSettingsSubmit(event) {
       classId: getFieldValue(form, "rewardClassId").trim(),
       points: clampPositiveInt(getFieldValue(form, "rewardPoints"), DEFAULT_SETTINGS.rewards.points, 1, 1000),
       reason: getFieldValue(form, "rewardReason").trim() || DEFAULT_SETTINGS.rewards.reason,
+    },
+    scoring: {
+      enabled: getFieldChecked(form, "scoreEnabled"),
+      basePoints: clampPositiveInt(getFieldValue(form, "scoreBasePoints"), DEFAULT_SCORE_BASE_POINTS, 1, 100),
+      pointsPerMinute: clampPositiveInt(getFieldValue(form, "scorePointsPerMinute"), DEFAULT_SCORE_POINTS_PER_MINUTE, 1, 100),
     },
   };
 
@@ -1110,6 +1133,11 @@ function loadSettings() {
           ? loaded.rewards.reason
           : DEFAULT_SETTINGS.rewards.reason,
     },
+    scoring: {
+      enabled: typeof loaded.scoring?.enabled === "boolean" ? loaded.scoring.enabled : DEFAULT_SETTINGS.scoring.enabled,
+      basePoints: clampPositiveInt(loaded.scoring?.basePoints, DEFAULT_SCORE_BASE_POINTS, 1, 100),
+      pointsPerMinute: clampPositiveInt(loaded.scoring?.pointsPerMinute, DEFAULT_SCORE_POINTS_PER_MINUTE, 1, 100),
+    },
     security: {
       adminPassword:
         typeof loaded.security?.adminPassword === "string"
@@ -1178,6 +1206,33 @@ function getPenaltyMinutes() {
 
 function getRewardPoints() {
   return clampPositiveInt(settingsState.rewards?.points, DEFAULT_SETTINGS.rewards.points, 1, 1000);
+}
+
+function calcEarnedPoints(entry) {
+  const scoring = settingsState.scoring;
+
+  if (!scoring?.enabled) {
+    return getRewardPoints();
+  }
+
+  const baseMinutes = clampPositiveInt(entry?.baseMinutesUsed, getBaseMinutes(), 1, 120);
+  const basePoints = clampPositiveInt(scoring.basePoints, DEFAULT_SCORE_BASE_POINTS, 1, 100);
+  const pointsPerMinute = clampPositiveInt(scoring.pointsPerMinute, DEFAULT_SCORE_POINTS_PER_MINUTE, 1, 100);
+
+  if (!entry?.startedAt || !entry?.completedAt) {
+    return basePoints;
+  }
+
+  const startMs = new Date(entry.startedAt).getTime();
+  const endMs = new Date(entry.completedAt).getTime();
+
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+    return basePoints;
+  }
+
+  const elapsedMinutes = Math.floor((endMs - startMs) / 60000);
+  const extraMinutes = Math.max(0, elapsedMinutes - baseMinutes);
+  return basePoints + extraMinutes * pointsPerMinute;
 }
 
 function getAdminPassword() {

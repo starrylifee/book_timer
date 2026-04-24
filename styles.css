@@ -79,7 +79,7 @@ body::after {
   margin: 0 auto;
   padding: clamp(14px, 1.5vw, 24px);
   display: grid;
-  grid-template-rows: minmax(96px, 0.25fr) minmax(128px, 0.42fr) minmax(0, 2.85fr);
+  grid-template-rows: minmax(96px, 0.25fr) minmax(160px, 0.42fr) minmax(0, 2.85fr);
   gap: clamp(8px, 0.8vw, 12px);
 }
 
