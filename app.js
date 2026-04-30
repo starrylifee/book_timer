@@ -45,6 +45,7 @@ const DEFAULT_SETTINGS = {
     className: "우리 반",
     baseMinutes: DEFAULT_BASE_MINUTES,
     penaltyMinutes: DEFAULT_PENALTY_MINUTES,
+    autoStopTime: "",
   },
   students: {
     roster: DEFAULT_STUDENT_ROSTER,
@@ -122,6 +123,7 @@ let settingsState = loadSettings();
 let activeDateKey = getTodayKey();
 let noticeTimerId = null;
 let pendingCancelStudentId = "";
+let autoStopFiredDate = "";
 
 initialize();
 
@@ -130,6 +132,7 @@ function initialize() {
   bindEvents();
   populateSettingsForm();
   renderAll();
+  checkAutoStop();
 }
 
 function bindEvents() {
@@ -178,7 +181,10 @@ function bindEvents() {
       closeSettings();
     }
   });
-  window.setInterval(syncDateIfNeeded, 30_000);
+  window.setInterval(() => {
+    syncDateIfNeeded();
+    checkAutoStop();
+  }, 30_000);
 }
 
 function renderAll() {
@@ -213,7 +219,9 @@ function renderGeneral() {
   const scoringNote = scoringEnabled
     ? ` · ${baseMinutes}분=${scoreBasePoints}점, 분당+${scorePointsPerMinute}점`
     : "";
-  elements.boardNote.textContent = `${baseMinutes}분 뒤 성공 · 일찍 누르면 ${penaltyMinutes}분 추가${scoringNote}`;
+  const autoStopTime = getAutoStopTime();
+  const autoStopNote = autoStopTime ? ` · 자동종료 ${autoStopTime}` : "";
+  elements.boardNote.textContent = `${baseMinutes}분 뒤 성공 · 일찍 누르면 ${penaltyMinutes}분 추가${scoringNote}${autoStopNote}`;
 }
 
 function renderSummary() {
@@ -741,6 +749,7 @@ function populateSettingsForm() {
   setFieldValue(form, "className", settingsState.general.className);
   setFieldValue(form, "baseMinutes", settingsState.general.baseMinutes);
   setFieldValue(form, "penaltyMinutes", settingsState.general.penaltyMinutes);
+  setFieldValue(form, "autoStopTime", settingsState.general.autoStopTime || "");
   setFieldValue(form, "adminPassword", getAdminPassword());
   setFieldValue(form, "studentRoster", rosterToTextareaValue(settingsState.students.roster));
   setFieldValue(form, "studentDisplayMode", settingsState.students.displayMode);
@@ -773,6 +782,7 @@ function handleSettingsSubmit(event) {
       className: getFieldValue(form, "className").trim() || DEFAULT_SETTINGS.general.className,
       baseMinutes: clampPositiveInt(getFieldValue(form, "baseMinutes"), DEFAULT_BASE_MINUTES, 1, 120),
       penaltyMinutes: clampPositiveInt(getFieldValue(form, "penaltyMinutes"), DEFAULT_PENALTY_MINUTES, 1, 20),
+      autoStopTime: normalizeTimeString(getFieldValue(form, "autoStopTime")),
     },
     security: {
       adminPassword: getFieldValue(form, "adminPassword"),
@@ -1101,6 +1111,7 @@ function loadSettings() {
         1,
         20
       ),
+      autoStopTime: normalizeTimeString(loaded.general?.autoStopTime),
     },
     students: {
       roster: normalizeStudentRoster(loaded.students?.roster),
@@ -1337,6 +1348,10 @@ function formatHistory(history) {
         return `관리자취소 ${formatTime(item.at)}`;
       }
 
+      if (item.type === "auto_stopped") {
+        return `자동종료 ${formatTime(item.at)}`;
+      }
+
       return `조기터치 ${formatTime(item.at)} (최종 ${item.requiredMinutes}분)`;
     })
     .join(" | ");
@@ -1507,6 +1522,71 @@ function normalizeStudentDisplayMode(value) {
   const allowed = new Set(["number", "name", "nickname", "name-or-nickname"]);
   const mode = String(value || "").trim();
   return allowed.has(mode) ? mode : "name-or-nickname";
+}
+
+function getAutoStopTime() {
+  return normalizeTimeString(settingsState.general?.autoStopTime);
+}
+
+function normalizeTimeString(value) {
+  if (typeof value !== "string") return "";
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return "";
+  return `${String(Number(match[1])).padStart(2, "0")}:${match[2]}`;
+}
+
+function checkAutoStop() {
+  const stopTime = getAutoStopTime();
+  if (!stopTime) return;
+  if (autoStopFiredDate === activeDateKey) return;
+
+  const now = new Date();
+  const [stopHour, stopMinute] = stopTime.split(":").map(Number);
+  const nowTotalMinutes = now.getHours() * 60 + now.getMinutes();
+  const stopTotalMinutes = stopHour * 60 + stopMinute;
+
+  if (nowTotalMinutes < stopTotalMinutes) return;
+
+  autoStopFiredDate = activeDateKey;
+  fireAutoStop();
+}
+
+function fireAutoStop() {
+  const todayRecord = getTodayRecord();
+  const now = new Date();
+  let successCount = 0;
+  let resetCount = 0;
+
+  getStudentIds().forEach((studentId) => {
+    const entry = todayRecord[studentId];
+    if (entry?.status !== "reading") return;
+
+    const elapsedMs = now.getTime() - new Date(entry.startedAt).getTime();
+    const requiredMs = entry.requiredMinutes * 60 * 1000;
+
+    if (elapsedMs >= requiredMs) {
+      entry.status = "success";
+      entry.completedAt = now.toISOString();
+      entry.history.push({ type: "success", at: entry.completedAt });
+      successCount += 1;
+    } else {
+      const stoppedAt = now.toISOString();
+      const prevHistory = Array.isArray(entry.history) ? [...entry.history] : [];
+      prevHistory.push({ type: "auto_stopped", at: stoppedAt });
+      todayRecord[studentId] = { ...createBlankEntry(), history: prevHistory };
+      resetCount += 1;
+    }
+  });
+
+  if (successCount === 0 && resetCount === 0) return;
+
+  persistRecords();
+  renderAll();
+
+  const parts = [];
+  if (successCount > 0) parts.push(`${successCount}명 자동 성공`);
+  if (resetCount > 0) parts.push(`${resetCount}명 자동 종료`);
+  showNotice(`자동 종료: ${parts.join(", ")}`, "warning", { duration: 5000 });
 }
 
 function clampPositiveInt(value, fallback, min, max) {
