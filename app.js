@@ -107,7 +107,18 @@ const elements = {
   downloadTodayBtn: document.getElementById("downloadTodayBtn"),
   downloadAllBtn: document.getElementById("downloadAllBtn"),
   resetApprovalsBtn: document.getElementById("resetApprovalsBtn"),
-  resetTodayBtn: document.getElementById("resetTodayBtn"),
+  openDeleteBtn: document.getElementById("openDeleteBtn"),
+  deleteOverlay: document.getElementById("deleteOverlay"),
+  deleteDateList: document.getElementById("deleteDateList"),
+  closeDeleteBtn: document.getElementById("closeDeleteBtn"),
+  cancelDeleteBtn: document.getElementById("cancelDeleteBtn"),
+  confirmDeleteBtn: document.getElementById("confirmDeleteBtn"),
+  deleteSelectTodayBtn: document.getElementById("deleteSelectTodayBtn"),
+  deleteSelectAllBtn: document.getElementById("deleteSelectAllBtn"),
+  deleteSelectNoneBtn: document.getElementById("deleteSelectNoneBtn"),
+  statsRangeGroup: document.getElementById("statsRangeGroup"),
+  statsSummary: document.getElementById("statsSummary"),
+  statsChart: document.getElementById("statsChart"),
   settingsOverlay: document.getElementById("settingsOverlay"),
   settingsForm: document.getElementById("settingsForm"),
   adminPromptOverlay: document.getElementById("adminPromptOverlay"),
@@ -124,6 +135,7 @@ let activeDateKey = getTodayKey();
 let noticeTimerId = null;
 let pendingCancelStudentId = "";
 let autoStopFiredDate = "";
+let statsRange = "7";
 
 initialize();
 
@@ -144,7 +156,31 @@ function bindEvents() {
   elements.downloadTodayBtn.addEventListener("click", () => downloadCsv("today"));
   elements.downloadAllBtn.addEventListener("click", () => downloadCsv("all"));
   elements.resetApprovalsBtn.addEventListener("click", resetApprovalsToday);
-  elements.resetTodayBtn.addEventListener("click", resetToday);
+  elements.openDeleteBtn.addEventListener("click", openDeleteDialog);
+  elements.closeDeleteBtn.addEventListener("click", closeDeleteDialog);
+  elements.cancelDeleteBtn.addEventListener("click", closeDeleteDialog);
+  elements.confirmDeleteBtn.addEventListener("click", confirmDeleteSelectedDates);
+  elements.deleteSelectTodayBtn.addEventListener("click", () => setDeleteSelection("today"));
+  elements.deleteSelectAllBtn.addEventListener("click", () => setDeleteSelection("all"));
+  elements.deleteSelectNoneBtn.addEventListener("click", () => setDeleteSelection("none"));
+  elements.deleteOverlay.addEventListener("click", (event) => {
+    if (event.target === elements.deleteOverlay) {
+      closeDeleteDialog();
+    }
+  });
+  elements.statsRangeGroup.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-stats-range]");
+
+    if (!button) {
+      return;
+    }
+
+    statsRange = button.dataset.statsRange;
+    elements.statsRangeGroup.querySelectorAll("[data-stats-range]").forEach((item) => {
+      item.classList.toggle("is-active", item === button);
+    });
+    renderStats();
+  });
   elements.openSettingsBtn.addEventListener("click", openSettings);
   elements.closeSettingsBtn.addEventListener("click", closeSettings);
   elements.cancelSettingsBtn.addEventListener("click", closeSettings);
@@ -177,6 +213,11 @@ function bindEvents() {
       return;
     }
 
+    if (!elements.deleteOverlay.hidden) {
+      closeDeleteDialog();
+      return;
+    }
+
     if (!elements.settingsOverlay.hidden) {
       closeSettings();
     }
@@ -195,6 +236,7 @@ function renderAll() {
   renderAlerts();
   renderSchedule();
   renderBoard();
+  renderStats();
 }
 
 function renderGeneral() {
@@ -334,6 +376,85 @@ function renderReadingStudents() {
       `;
     })
     .join("");
+}
+
+function getStatsDateKeys() {
+  if (statsRange === "all") {
+    const recorded = getRecordedDateKeys().slice().reverse();
+    return recorded.length > 0 ? recorded : [activeDateKey];
+  }
+
+  const dayCount = clampPositiveInt(statsRange, 7, 1, 366);
+  const keys = [];
+  const base = new Date();
+
+  for (let offset = dayCount - 1; offset >= 0; offset -= 1) {
+    const date = new Date(base.getFullYear(), base.getMonth(), base.getDate() - offset);
+    keys.push(getDateKeyFromDate(date));
+  }
+
+  return keys;
+}
+
+function renderStats() {
+  const dateKeys = getStatsDateKeys();
+  const totalCount = getStudentIds().length;
+  const days = dateKeys.map((dateKey) => ({
+    dateKey,
+    ...summarizeDayRecord(appState.records[dateKey] || {}),
+  }));
+
+  const recordedDays = days.filter((day) => day.touchedCount > 0);
+  const successSum = recordedDays.reduce((sum, day) => sum + day.successCount, 0);
+  const maxSuccess = Math.max(0, ...days.map((day) => day.successCount));
+  const bestDay = days.find((day) => day.successCount === maxSuccess && maxSuccess > 0);
+
+  if (recordedDays.length === 0) {
+    elements.statsSummary.textContent = "이 기간에는 저장된 기록이 없습니다.";
+  } else {
+    const average = (successSum / recordedDays.length).toFixed(1);
+    const bestLabel = bestDay ? ` · 최고 ${formatShortDate(bestDay.dateKey)} ${maxSuccess}명` : "";
+    elements.statsSummary.textContent =
+      `기록 ${recordedDays.length}일 · 성공 누적 ${successSum}명 · 하루 평균 ${average}명${bestLabel}`;
+  }
+
+  const showEveryLabel = days.length <= 16;
+  const labelStep = showEveryLabel ? 1 : Math.ceil(days.length / 10);
+
+  elements.statsChart.innerHTML = `
+    <div class="stats-axis">
+      <span>${totalCount}명</span>
+      <span>0</span>
+    </div>
+    <div class="stats-plot" role="img" aria-label="일별 성공 인원 그래프">
+      ${days
+        .map((day, index) => {
+          const rawPercent = totalCount > 0 ? (day.successCount / totalCount) * 100 : 0;
+          const percent = day.successCount > 0 ? Math.max(4, Math.round(rawPercent)) : 0;
+          const isToday = day.dateKey === activeDateKey;
+          const shortDate = formatShortDate(day.dateKey);
+          const showXLabel = showEveryLabel || index % labelStep === 0 || isToday;
+          const showValue = day.successCount > 0 && (showEveryLabel || day.successCount === maxSuccess || isToday);
+          const tooltip = `${formatDateLabel(day.dateKey)} · 성공 ${day.successCount}명 / ${totalCount}명`;
+
+          return `
+            <div class="stats-col${isToday ? " is-today" : ""}" title="${escapeHtml(tooltip)}" aria-label="${escapeHtml(tooltip)}">
+              <div class="stats-track">
+                ${showValue ? `<span class="stats-value" style="bottom: ${percent}%">${day.successCount}</span>` : ""}
+                <div class="stats-bar${day.successCount === 0 ? " is-zero" : ""}" style="height: ${percent}%"></div>
+              </div>
+              <span class="stats-x-label">${showXLabel ? escapeHtml(shortDate) : ""}</span>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function formatShortDate(dateKey) {
+  const [, month, day] = String(dateKey).split("-");
+  return `${Number(month)}/${Number(day)}`;
 }
 
 function renderBoard() {
@@ -822,17 +943,132 @@ function handleSettingsSubmit(event) {
   showNotice("설정을 저장했습니다.", "default");
 }
 
-function resetToday() {
+function openDeleteDialog() {
   syncDateIfNeeded();
+  renderDeleteDateList();
+  elements.deleteOverlay.hidden = false;
+}
 
-  if (!window.confirm("오늘 독서 기록과 승인 기록을 모두 지울까요?")) {
+function closeDeleteDialog() {
+  elements.deleteOverlay.hidden = true;
+}
+
+function getRecordedDateKeys() {
+  return Object.keys(appState.records)
+    .filter((dateKey) => /^\d{4}-\d{2}-\d{2}$/.test(dateKey))
+    .sort()
+    .reverse();
+}
+
+function summarizeDayRecord(dayRecord) {
+  const studentIds = getStudentIds();
+  let successCount = 0;
+  let touchedCount = 0;
+
+  studentIds.forEach((studentId) => {
+    const entry = dayRecord?.[studentId];
+
+    if (!entry) {
+      return;
+    }
+
+    if (entry.status === "success") {
+      successCount += 1;
+    }
+
+    if (entry.status !== "idle" || entry.startedAt || (Array.isArray(entry.history) && entry.history.length > 0)) {
+      touchedCount += 1;
+    }
+  });
+
+  return { successCount, touchedCount, totalCount: studentIds.length };
+}
+
+function renderDeleteDateList() {
+  const dateKeys = getRecordedDateKeys();
+
+  if (dateKeys.length === 0) {
+    elements.deleteDateList.innerHTML = `<li class="delete-empty">저장된 기록이 없습니다.</li>`;
     return;
   }
 
-  appState.records[activeDateKey] = createBlankDayRecord();
+  elements.deleteDateList.innerHTML = dateKeys
+    .map((dateKey) => {
+      const summary = summarizeDayRecord(appState.records[dateKey]);
+      const isToday = dateKey === activeDateKey;
+      const todayChip = isToday ? `<span class="delete-today-chip">오늘</span>` : "";
+      const summaryLabel = summary.touchedCount === 0
+        ? "기록 없음"
+        : `성공 ${summary.successCount}명 / ${summary.totalCount}명`;
+
+      return `
+        <li class="delete-date-item">
+          <label class="delete-date-label">
+            <input type="checkbox" data-delete-date="${escapeHtml(dateKey)}">
+            <span class="delete-date-text">
+              <strong>${escapeHtml(formatDateLabel(dateKey))}${todayChip}</strong>
+              <span class="delete-date-summary">${escapeHtml(summaryLabel)}</span>
+            </span>
+          </label>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function setDeleteSelection(mode) {
+  elements.deleteDateList
+    .querySelectorAll("[data-delete-date]")
+    .forEach((checkbox) => {
+      if (mode === "all") {
+        checkbox.checked = true;
+        return;
+      }
+
+      if (mode === "today") {
+        checkbox.checked = checkbox.dataset.deleteDate === activeDateKey;
+        return;
+      }
+
+      checkbox.checked = false;
+    });
+}
+
+function confirmDeleteSelectedDates() {
+  syncDateIfNeeded();
+
+  const selectedDates = Array.from(elements.deleteDateList.querySelectorAll("[data-delete-date]:checked"))
+    .map((checkbox) => checkbox.dataset.deleteDate)
+    .filter(Boolean)
+    .sort();
+
+  if (selectedDates.length === 0) {
+    showNotice("삭제할 날짜를 먼저 선택해 주세요.", "default");
+    return;
+  }
+
+  const dateLabels = selectedDates.map((dateKey) => formatDateLabel(dateKey));
+  const previewLabel = dateLabels.length <= 3
+    ? dateLabels.join(", ")
+    : `${dateLabels.slice(0, 3).join(", ")} 외 ${dateLabels.length - 3}일`;
+
+  if (!window.confirm(`${previewLabel}\n\n총 ${selectedDates.length}일치 독서·승인 기록을 정말 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`)) {
+    return;
+  }
+
+  selectedDates.forEach((dateKey) => {
+    if (dateKey === activeDateKey) {
+      appState.records[dateKey] = createBlankDayRecord();
+      return;
+    }
+
+    delete appState.records[dateKey];
+  });
+
   persistRecords();
   renderAll();
-  showNotice("오늘 기록을 처음 상태로 되돌렸습니다.", "default");
+  renderDeleteDateList();
+  showNotice(`기록 ${selectedDates.length}일치를 삭제했습니다.`, "default");
 }
 
 function resetApprovalsToday() {

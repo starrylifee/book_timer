@@ -120,8 +120,22 @@
               <button id="downloadTodayBtn" class="action-button" type="button">오늘 CSV</button>
               <button id="downloadAllBtn" class="action-button secondary" type="button">전체 CSV</button>
               <button id="resetApprovalsBtn" class="action-button secondary" type="button">승인만 초기화</button>
-              <button id="resetTodayBtn" class="action-button danger" type="button">오늘 전체 초기화</button>
+              <button id="openDeleteBtn" class="action-button danger" type="button">기록 삭제</button>
             </div>
+          </article>
+
+          <article class="panel teacher-panel teacher-stats-panel">
+            <div class="section-head stats-head">
+              <h3>일별 독서 통계</h3>
+              <div id="statsRangeGroup" class="stats-range" role="group" aria-label="통계 기간 선택">
+                <button class="inline-button stats-range-button is-active" type="button" data-stats-range="7">최근 7일</button>
+                <button class="inline-button stats-range-button" type="button" data-stats-range="14">최근 14일</button>
+                <button class="inline-button stats-range-button" type="button" data-stats-range="30">최근 30일</button>
+                <button class="inline-button stats-range-button" type="button" data-stats-range="all">전체</button>
+              </div>
+            </div>
+            <p id="statsSummary" class="helper-copy teacher-helper-copy"></p>
+            <div id="statsChart" class="stats-chart"></div>
           </article>
 
           <article class="panel teacher-panel teacher-reading-panel">
@@ -376,6 +390,31 @@
             <button id="cancelSettingsBtn" class="action-button secondary" type="button">취소</button>
           </div>
         </form>
+      </section>
+    </div>
+
+    <div id="deleteOverlay" class="overlay" hidden>
+      <section class="password-dialog delete-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+        <div class="settings-head">
+          <div>
+            <p class="settings-label">기록 삭제</p>
+            <h2 id="deleteTitle">삭제할 날짜를 선택하세요</h2>
+          </div>
+          <button id="closeDeleteBtn" class="ghost-button" type="button">닫기</button>
+        </div>
+        <p class="panel-copy password-message">
+          선택한 날짜의 독서·승인 기록이 완전히 삭제됩니다. 필요하면 삭제 전에 전체 CSV로 먼저 내려받으세요.
+        </p>
+        <div class="delete-quick">
+          <button id="deleteSelectTodayBtn" class="inline-button" type="button">오늘만 선택</button>
+          <button id="deleteSelectAllBtn" class="inline-button" type="button">전체 선택</button>
+          <button id="deleteSelectNoneBtn" class="inline-button" type="button">선택 해제</button>
+        </div>
+        <ul id="deleteDateList" class="delete-date-list"></ul>
+        <div class="settings-actions">
+          <button id="confirmDeleteBtn" class="action-button danger" type="button">선택한 날짜 삭제</button>
+          <button id="cancelDeleteBtn" class="action-button secondary" type="button">취소</button>
+        </div>
       </section>
     </div>
 
