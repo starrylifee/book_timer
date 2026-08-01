@@ -118,6 +118,8 @@ const elements = {
   deleteSelectTodayBtn: document.getElementById("deleteSelectTodayBtn"),
   deleteSelectAllBtn: document.getElementById("deleteSelectAllBtn"),
   deleteSelectNoneBtn: document.getElementById("deleteSelectNoneBtn"),
+  rosterCountInput: document.getElementById("rosterCountInput"),
+  generateRosterBtn: document.getElementById("generateRosterBtn"),
   statsTypeGroup: document.getElementById("statsTypeGroup"),
   statsRangeGroup: document.getElementById("statsRangeGroup"),
   statsSummary: document.getElementById("statsSummary"),
@@ -202,6 +204,7 @@ function bindEvents() {
   elements.closeSettingsBtn.addEventListener("click", closeSettings);
   elements.cancelSettingsBtn.addEventListener("click", closeSettings);
   elements.settingsForm.addEventListener("submit", handleSettingsSubmit);
+  elements.generateRosterBtn.addEventListener("click", generateRosterByCount);
   elements.adminPromptForm.addEventListener("submit", handleAdminPromptSubmit);
   elements.closeAdminPromptBtn.addEventListener("click", closeAdminPrompt);
   elements.cancelAdminPromptBtn.addEventListener("click", closeAdminPrompt);
@@ -1096,6 +1099,7 @@ function populateSettingsForm() {
   setFieldValue(form, "appTheme", normalizeTheme(settingsState.general.theme));
   setFieldValue(form, "adminPassword", getAdminPassword());
   setFieldValue(form, "studentRoster", rosterToTextareaValue(settingsState.students.roster));
+  elements.rosterCountInput.value = String(getStudentRoster().length);
   setFieldValue(form, "studentDisplayMode", settingsState.students.displayMode);
   setFieldValue(form, "importantNotice", settingsState.importantNotice || "");
   setFieldValue(form, "schedule-monday", toTextareaValue(settingsState.schedules.monday));
@@ -1114,6 +1118,29 @@ function populateSettingsForm() {
   setFieldChecked(form, "scoreEnabled", settingsState.scoring?.enabled ?? DEFAULT_SETTINGS.scoring.enabled);
   setFieldValue(form, "scoreBasePoints", settingsState.scoring?.basePoints ?? DEFAULT_SCORE_BASE_POINTS);
   setFieldValue(form, "scorePointsPerMinute", settingsState.scoring?.pointsPerMinute ?? DEFAULT_SCORE_POINTS_PER_MINUTE);
+}
+
+function generateRosterByCount() {
+  const count = clampPositiveInt(elements.rosterCountInput.value, 25, 1, 48);
+  const rosterField = elements.settingsForm.elements.namedItem("studentRoster");
+  const existing = parseStudentRosterText(rosterField.value);
+  const byNumber = new Map(existing.map((student) => [student.number, student]));
+  const lines = [];
+
+  for (let number = 1; number <= count; number += 1) {
+    const key = String(number);
+    const kept = byNumber.get(key);
+
+    if (kept) {
+      lines.push([kept.number, kept.name, kept.nickname].filter((part) => part !== "").join(","));
+    } else {
+      lines.push(key);
+    }
+  }
+
+  rosterField.value = lines.join("\n");
+  elements.rosterCountInput.value = String(count);
+  showNotice(`1번부터 ${count}번까지 목록을 채웠습니다. 이름을 다듬은 뒤 저장을 누르세요.`, "default", { duration: 2600 });
 }
 
 function handleSettingsSubmit(event) {

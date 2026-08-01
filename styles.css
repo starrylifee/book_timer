@@ -595,18 +595,51 @@ h3 {
   line-height: 1.28;
 }
 
+.student-grid.is-very-dense {
+  gap: clamp(5px, 0.55vw, 9px);
+}
+
 .student-grid.is-very-dense .student-card {
-  padding: 8px 9px 7px;
+  padding: 6px 8px 5px;
+  border-radius: 10px;
+  border-width: 1.5px;
+}
+
+.student-grid.is-very-dense .student-card.is-reading,
+.student-grid.is-very-dense .student-card.is-success {
+  border-width: 2px;
 }
 
 .student-grid.is-very-dense .student-number {
-  font-size: clamp(1.42rem, 1.75vw, 1.88rem);
+  font-size: clamp(1.2rem, 1.55vw, 1.7rem);
+}
+
+.student-grid.is-very-dense .student-display-name {
+  margin-top: 2px;
+  font-size: 0.62rem;
 }
 
 .student-grid.is-very-dense .state-badge {
-  min-width: 42px;
-  min-height: 22px;
-  font-size: 0.66rem;
+  min-width: 36px;
+  min-height: 18px;
+  font-size: 0.6rem;
+}
+
+.student-grid.is-very-dense .student-card-bottom {
+  margin-top: 2px;
+  min-height: 1.1em;
+  padding-bottom: 0;
+}
+
+.student-grid.is-very-dense .state-title {
+  font-size: 0.7rem;
+  line-height: 1.15;
+}
+
+.student-grid.is-very-dense .approval-chip {
+  min-height: 16px;
+  padding: 0 6px;
+  font-size: 0.58rem;
 }
 
 .action-button,
@@ -1357,6 +1390,21 @@ h3 {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.roster-generate {
+  display: flex;
+  gap: 8px;
+}
+
+.roster-generate input {
+  flex: 1;
+  min-width: 0;
+}
+
+.roster-generate .inline-button {
+  flex: none;
+  white-space: nowrap;
 }
 
 code {
