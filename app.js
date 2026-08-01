@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS = {
     baseMinutes: DEFAULT_BASE_MINUTES,
     penaltyMinutes: DEFAULT_PENALTY_MINUTES,
     autoStopTime: "",
+    theme: "navy",
   },
   students: {
     roster: DEFAULT_STUDENT_ROSTER,
@@ -116,6 +117,7 @@ const elements = {
   deleteSelectTodayBtn: document.getElementById("deleteSelectTodayBtn"),
   deleteSelectAllBtn: document.getElementById("deleteSelectAllBtn"),
   deleteSelectNoneBtn: document.getElementById("deleteSelectNoneBtn"),
+  statsTypeGroup: document.getElementById("statsTypeGroup"),
   statsRangeGroup: document.getElementById("statsRangeGroup"),
   statsSummary: document.getElementById("statsSummary"),
   statsChart: document.getElementById("statsChart"),
@@ -136,6 +138,7 @@ let noticeTimerId = null;
 let pendingCancelStudentId = "";
 let autoStopFiredDate = "";
 let statsRange = "7";
+let statsChartType = "daily";
 
 initialize();
 
@@ -177,6 +180,19 @@ function bindEvents() {
 
     statsRange = button.dataset.statsRange;
     elements.statsRangeGroup.querySelectorAll("[data-stats-range]").forEach((item) => {
+      item.classList.toggle("is-active", item === button);
+    });
+    renderStats();
+  });
+  elements.statsTypeGroup.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-stats-type]");
+
+    if (!button) {
+      return;
+    }
+
+    statsChartType = button.dataset.statsType;
+    elements.statsTypeGroup.querySelectorAll("[data-stats-type]").forEach((item) => {
       item.classList.toggle("is-active", item === button);
     });
     renderStats();
@@ -239,7 +255,25 @@ function renderAll() {
   renderStats();
 }
 
+function normalizeTheme(value) {
+  const allowed = new Set(["navy", "forest", "burgundy", "teal", "violet"]);
+  const theme = String(value || "").trim();
+  return allowed.has(theme) ? theme : "navy";
+}
+
+function applyTheme() {
+  const theme = normalizeTheme(settingsState.general?.theme);
+
+  if (theme === "navy") {
+    delete document.body.dataset.theme;
+    return;
+  }
+
+  document.body.dataset.theme = theme;
+}
+
 function renderGeneral() {
+  applyTheme();
   const title = buildDisplayTitle();
   const baseMinutes = getBaseMinutes();
   const penaltyMinutes = getPenaltyMinutes();
@@ -398,7 +432,8 @@ function getStatsDateKeys() {
 
 function renderStats() {
   const dateKeys = getStatsDateKeys();
-  const totalCount = getStudentIds().length;
+  const roster = getStudentRoster();
+  const totalCount = roster.length;
   const days = dateKeys.map((dateKey) => ({
     dateKey,
     ...summarizeDayRecord(appState.records[dateKey] || {}),
@@ -418,6 +453,22 @@ function renderStats() {
       `기록 ${recordedDays.length}일 · 성공 누적 ${successSum}명 · 하루 평균 ${average}명${bestLabel}`;
   }
 
+  elements.statsChart.classList.toggle("is-daily", statsChartType === "daily");
+
+  if (statsChartType === "heatmap") {
+    renderStatsHeatmap(dateKeys, roster);
+    return;
+  }
+
+  if (statsChartType === "students") {
+    renderStatsStudents(dateKeys, roster, recordedDays.length);
+    return;
+  }
+
+  renderStatsDaily(days, totalCount, maxSuccess);
+}
+
+function renderStatsDaily(days, totalCount, maxSuccess) {
   const showEveryLabel = days.length <= 16;
   const labelStep = showEveryLabel ? 1 : Math.ceil(days.length / 10);
 
@@ -444,6 +495,104 @@ function renderStats() {
                 <div class="stats-bar${day.successCount === 0 ? " is-zero" : ""}" style="height: ${percent}%"></div>
               </div>
               <span class="stats-x-label">${showXLabel ? escapeHtml(shortDate) : ""}</span>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function getEntryDayState(entry) {
+  if (!entry) {
+    return "none";
+  }
+
+  if (entry.status === "success") {
+    return "success";
+  }
+
+  if (entry.status === "reading" || entry.startedAt || (Array.isArray(entry.history) && entry.history.length > 0)) {
+    return "partial";
+  }
+
+  return "none";
+}
+
+function renderStatsHeatmap(dateKeys, roster) {
+  const labelStep = dateKeys.length <= 16 ? 1 : Math.ceil(dateKeys.length / 10);
+  const headerCells = dateKeys
+    .map((dateKey, index) => {
+      const showLabel = labelStep === 1 || index % labelStep === 0 || dateKey === activeDateKey;
+      const isToday = dateKey === activeDateKey;
+      return `<div class="heat-date${isToday ? " is-today" : ""}">${showLabel ? escapeHtml(formatShortDate(dateKey)) : ""}</div>`;
+    })
+    .join("");
+
+  const stateLabels = { success: "성공", partial: "미완", none: "기록 없음" };
+  const rows = roster
+    .map((student) => {
+      const displayName = getStudentDisplayName(student);
+      const rowLabel = `${student.number}${displayName ? ` ${displayName}` : ""}`;
+      const cells = dateKeys
+        .map((dateKey) => {
+          const entry = appState.records[dateKey]?.[student.id];
+          const state = getEntryDayState(entry);
+          const tooltip = `${formatShortDate(dateKey)} · ${student.number}번 · ${stateLabels[state]}`;
+          return `<div class="heat-cell is-${state}" title="${escapeHtml(tooltip)}" aria-label="${escapeHtml(tooltip)}"></div>`;
+        })
+        .join("");
+      return `<div class="heat-row-label" title="${escapeHtml(rowLabel)}">${escapeHtml(rowLabel)}</div>${cells}`;
+    })
+    .join("");
+
+  elements.statsChart.innerHTML = `
+    <div class="heat-wrap">
+      <div class="heat-grid" style="--heat-cols: ${dateKeys.length}">
+        <div class="heat-corner"></div>
+        ${headerCells}
+        ${rows}
+      </div>
+    </div>
+    <div class="heat-legend">
+      <span><i class="heat-swatch is-success"></i>성공</span>
+      <span><i class="heat-swatch is-partial"></i>미완(시작했지만 성공 못 함)</span>
+      <span><i class="heat-swatch is-none"></i>기록 없음</span>
+    </div>
+  `;
+}
+
+function renderStatsStudents(dateKeys, roster, recordedDayCount) {
+  const counts = roster.map((student) => {
+    let successDays = 0;
+
+    dateKeys.forEach((dateKey) => {
+      if (appState.records[dateKey]?.[student.id]?.status === "success") {
+        successDays += 1;
+      }
+    });
+
+    return { student, successDays };
+  });
+
+  const maxDays = Math.max(1, recordedDayCount, ...counts.map((item) => item.successDays));
+
+  elements.statsChart.innerHTML = `
+    <div class="stu-list">
+      ${counts
+        .map(({ student, successDays }) => {
+          const displayName = getStudentDisplayName(student);
+          const rowLabel = `${student.number}${displayName ? ` ${displayName}` : ""}`;
+          const percent = Math.round((successDays / maxDays) * 100);
+          const tooltip = `${student.number}번 · 기간 내 성공 ${successDays}일 / 기록 ${recordedDayCount}일`;
+
+          return `
+            <div class="stu-row" title="${escapeHtml(tooltip)}">
+              <span class="stu-label">${escapeHtml(rowLabel)}</span>
+              <div class="stu-track">
+                <div class="stu-bar" style="width: ${percent}%"></div>
+              </div>
+              <span class="stu-value">${successDays}일</span>
             </div>
           `;
         })
@@ -871,6 +1020,7 @@ function populateSettingsForm() {
   setFieldValue(form, "baseMinutes", settingsState.general.baseMinutes);
   setFieldValue(form, "penaltyMinutes", settingsState.general.penaltyMinutes);
   setFieldValue(form, "autoStopTime", settingsState.general.autoStopTime || "");
+  setFieldValue(form, "appTheme", normalizeTheme(settingsState.general.theme));
   setFieldValue(form, "adminPassword", getAdminPassword());
   setFieldValue(form, "studentRoster", rosterToTextareaValue(settingsState.students.roster));
   setFieldValue(form, "studentDisplayMode", settingsState.students.displayMode);
@@ -904,6 +1054,7 @@ function handleSettingsSubmit(event) {
       baseMinutes: clampPositiveInt(getFieldValue(form, "baseMinutes"), DEFAULT_BASE_MINUTES, 1, 120),
       penaltyMinutes: clampPositiveInt(getFieldValue(form, "penaltyMinutes"), DEFAULT_PENALTY_MINUTES, 1, 20),
       autoStopTime: normalizeTimeString(getFieldValue(form, "autoStopTime")),
+      theme: normalizeTheme(getFieldValue(form, "appTheme")),
     },
     security: {
       adminPassword: getFieldValue(form, "adminPassword"),
@@ -1348,6 +1499,7 @@ function loadSettings() {
         20
       ),
       autoStopTime: normalizeTimeString(loaded.general?.autoStopTime),
+      theme: normalizeTheme(loaded.general?.theme),
     },
     students: {
       roster: normalizeStudentRoster(loaded.students?.roster),

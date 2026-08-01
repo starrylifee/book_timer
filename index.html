@@ -126,12 +126,19 @@
 
           <article class="panel teacher-panel teacher-stats-panel">
             <div class="section-head stats-head">
-              <h3>일별 독서 통계</h3>
-              <div id="statsRangeGroup" class="stats-range" role="group" aria-label="통계 기간 선택">
-                <button class="inline-button stats-range-button is-active" type="button" data-stats-range="7">최근 7일</button>
-                <button class="inline-button stats-range-button" type="button" data-stats-range="14">최근 14일</button>
-                <button class="inline-button stats-range-button" type="button" data-stats-range="30">최근 30일</button>
-                <button class="inline-button stats-range-button" type="button" data-stats-range="all">전체</button>
+              <h3>독서 통계</h3>
+              <div class="stats-controls">
+                <div id="statsTypeGroup" class="stats-range" role="group" aria-label="그래프 종류 선택">
+                  <button class="inline-button stats-range-button is-active" type="button" data-stats-type="daily">일별 막대</button>
+                  <button class="inline-button stats-range-button" type="button" data-stats-type="heatmap">학생×일자 히트맵</button>
+                  <button class="inline-button stats-range-button" type="button" data-stats-type="students">학생별 성공 일수</button>
+                </div>
+                <div id="statsRangeGroup" class="stats-range" role="group" aria-label="통계 기간 선택">
+                  <button class="inline-button stats-range-button is-active" type="button" data-stats-range="7">최근 7일</button>
+                  <button class="inline-button stats-range-button" type="button" data-stats-range="14">최근 14일</button>
+                  <button class="inline-button stats-range-button" type="button" data-stats-range="30">최근 30일</button>
+                  <button class="inline-button stats-range-button" type="button" data-stats-range="all">전체</button>
+                </div>
               </div>
             </div>
             <p id="statsSummary" class="helper-copy teacher-helper-copy"></p>
@@ -200,6 +207,16 @@
               <label class="field">
                 <span>자동 종료 시간 (선택)</span>
                 <input type="time" name="autoStopTime">
+              </label>
+              <label class="field">
+                <span>화면 테마</span>
+                <select name="appTheme">
+                  <option value="navy">네이비 (기본)</option>
+                  <option value="forest">포레스트 그린</option>
+                  <option value="burgundy">버건디</option>
+                  <option value="teal">딥 틸</option>
+                  <option value="violet">바이올렛</option>
+                </select>
               </label>
               <label class="field">
                 <span>안내</span>
