@@ -1392,21 +1392,6 @@ h3 {
   gap: 8px;
 }
 
-.roster-generate {
-  display: flex;
-  gap: 8px;
-}
-
-.roster-generate input {
-  flex: 1;
-  min-width: 0;
-}
-
-.roster-generate .inline-button {
-  flex: none;
-  white-space: nowrap;
-}
-
 code {
   padding: 0.1em 0.3em;
   border-radius: 5px;

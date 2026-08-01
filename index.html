@@ -282,13 +282,10 @@
                   placeholder="1,김민수,민수&#10;2,이서준&#10;3&#10;4,박도윤,도윤"
                 ></textarea>
               </label>
-              <div class="field">
-                <span>학생 수로 자동 생성 (최대 48명)</span>
-                <div class="roster-generate">
-                  <input type="number" id="rosterCountInput" min="1" max="48" step="1" value="25" aria-label="학생 수">
-                  <button id="generateRosterBtn" class="inline-button" type="button">번호 목록 만들기</button>
-                </div>
-              </div>
+              <label class="field">
+                <span>학생 수 (입력하면 목록이 1번부터 자동으로 채워집니다 · 최대 48명)</span>
+                <input type="number" id="rosterCountInput" min="1" max="48" step="1" aria-label="학생 수">
+              </label>
               <label class="field">
                 <span>카드 표시 방식</span>
                 <select name="studentDisplayMode">

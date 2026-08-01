@@ -119,7 +119,6 @@ const elements = {
   deleteSelectAllBtn: document.getElementById("deleteSelectAllBtn"),
   deleteSelectNoneBtn: document.getElementById("deleteSelectNoneBtn"),
   rosterCountInput: document.getElementById("rosterCountInput"),
-  generateRosterBtn: document.getElementById("generateRosterBtn"),
   statsTypeGroup: document.getElementById("statsTypeGroup"),
   statsRangeGroup: document.getElementById("statsRangeGroup"),
   statsSummary: document.getElementById("statsSummary"),
@@ -204,7 +203,7 @@ function bindEvents() {
   elements.closeSettingsBtn.addEventListener("click", closeSettings);
   elements.cancelSettingsBtn.addEventListener("click", closeSettings);
   elements.settingsForm.addEventListener("submit", handleSettingsSubmit);
-  elements.generateRosterBtn.addEventListener("click", generateRosterByCount);
+  elements.rosterCountInput.addEventListener("input", generateRosterByCount);
   elements.adminPromptForm.addEventListener("submit", handleAdminPromptSubmit);
   elements.closeAdminPromptBtn.addEventListener("click", closeAdminPrompt);
   elements.cancelAdminPromptBtn.addEventListener("click", closeAdminPrompt);
@@ -1121,7 +1120,18 @@ function populateSettingsForm() {
 }
 
 function generateRosterByCount() {
-  const count = clampPositiveInt(elements.rosterCountInput.value, 25, 1, 48);
+  const rawValue = String(elements.rosterCountInput.value || "").trim();
+
+  if (!rawValue) {
+    return;
+  }
+
+  const count = clampPositiveInt(rawValue, 0, 1, 48);
+
+  if (count < 1) {
+    return;
+  }
+
   const rosterField = elements.settingsForm.elements.namedItem("studentRoster");
   const existing = parseStudentRosterText(rosterField.value);
   const byNumber = new Map(existing.map((student) => [student.number, student]));
@@ -1139,8 +1149,6 @@ function generateRosterByCount() {
   }
 
   rosterField.value = lines.join("\n");
-  elements.rosterCountInput.value = String(count);
-  showNotice(`1번부터 ${count}번까지 목록을 채웠습니다. 이름을 다듬은 뒤 저장을 누르세요.`, "default", { duration: 2600 });
 }
 
 function handleSettingsSubmit(event) {
