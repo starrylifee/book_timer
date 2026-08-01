@@ -356,18 +356,27 @@
 
           <section class="settings-section">
             <div class="settings-title-row">
-              <h3>포인트 승인 연동</h3>
+              <h3>그라운드카드 포인트 승인 연동</h3>
               <p>
-                교사가 일괄 승인할 때만 학생별로 POST 요청을 보냅니다. 사용하지 않으면 체크를 끄면 됩니다.
+                <a href="https://growndcard.com/" target="_blank" rel="noopener">growndcard.com</a>에서
+                학급을 만들고 반 ID와 API 키를 생성하면, 독서 성공 기록을 학생별 포인트로 보낼 수 있습니다.
+                사용하지 않으면 체크를 끄면 됩니다.
               </p>
             </div>
 
             <label class="toggle-field">
               <input type="checkbox" name="rewardEnabled">
-              <span>승인 시 API 사용</span>
+              <span>포인트 전송 사용 (그라운드카드 API)</span>
             </label>
 
             <div class="api-grid">
+              <label class="field field-span-2">
+                <span>승인 방식</span>
+                <select name="rewardApprovalMode">
+                  <option value="manual">수동 — 교사가 "일괄 승인" 버튼을 눌러야 승인·전송됩니다</option>
+                  <option value="auto">자동 — 학생이 성공하는 즉시 승인·전송됩니다</option>
+                </select>
+              </label>
               <label class="field field-span-2">
                 <span>승인 API URL 또는 기본 URL</span>
                 <input type="text" name="rewardApiUrl" placeholder="예: https://growndcard.com 또는 https://growndcard.com/api/v1/classes/{classId}/students/{studentCode}/points">
@@ -395,10 +404,11 @@
             </div>
 
             <p class="helper-copy">
-              그라운드 기본값은 <code>X-API-Key</code> 헤더와
-              <code>https://growndcard.com/api/v1/classes/{classId}/students/{studentCode}/points</code> 입니다.
-              학생 번호를 <code>studentCode</code>로 사용하고, 본문은 <code>type</code>, <code>points</code>,
-              <code>description</code>, <code>source</code>, <code>metadata</code> 형식으로 보냅니다.
+              연동 순서: ① growndcard.com에 가입해 학급 만들기 → ② 학급 설정에서 반 ID와 API 키 발급 →
+              ③ 위 칸에 붙여넣고 저장. 학생 번호가 그라운드카드의 <code>studentCode</code>로 그대로 사용되므로
+              두 곳의 학생 번호가 같아야 합니다. API URL과 헤더(<code>X-API-Key</code>)는 기본값이
+              채워져 있으니 그대로 두면 됩니다. 자동 승인에서 전송이 실패한 학생은 승인 대기로 남고,
+              "일괄 승인" 버튼으로 다시 보낼 수 있습니다.
             </p>
           </section>
 

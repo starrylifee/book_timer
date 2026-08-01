@@ -63,6 +63,7 @@ const DEFAULT_SETTINGS = {
   },
   rewards: {
     enabled: false,
+    approvalMode: "manual",
     apiUrl: GROWND_POINTS_API_TEMPLATE,
     apiKeyHeader: "X-API-Key",
     apiKey: "",
@@ -321,12 +322,28 @@ function renderApproval() {
 
   elements.pendingApprovalCount.textContent = `${pendingCount}명`;
   elements.approvedCount.textContent = `${approvedCount}명`;
+  const autoMode = isAutoApprovalEnabled();
+
   elements.approvalSummary.textContent = pendingCount > 0
     ? `${rewardsEnabled ? "승인/전송 대기" : "로컬 승인 대기"} ${pendingCount}명`
     : "모든 성공 학생 승인 완료";
-  elements.approvalStatusText.textContent = rewardsEnabled
-    ? "체크 ON 상태입니다. 버튼을 누르면 GROWND 전송 후 승인됩니다."
-    : "체크 OFF 상태입니다. 지금 누르면 로컬 승인만 되고 GROWND 전송은 되지 않습니다.";
+
+  if (autoMode) {
+    if (!rewardsEnabled) {
+      elements.approvalStatusText.textContent = "자동 승인 모드입니다(API 꺼짐). 성공하는 즉시 로컬 승인됩니다.";
+    } else if (!hasRewardConfig()) {
+      elements.approvalStatusText.textContent =
+        "자동 승인 모드이지만 API 키·반 ID가 비어 있어 전송하지 않습니다. 입력 후 저장하면 자동 전송됩니다.";
+    } else {
+      elements.approvalStatusText.textContent =
+        "자동 승인 모드입니다. 성공하는 즉시 그라운드카드로 전송되고, 전송 실패한 학생만 대기로 남습니다.";
+    }
+  } else {
+    elements.approvalStatusText.textContent = rewardsEnabled
+      ? "수동 승인 모드입니다. 버튼을 누르면 그라운드카드 전송 후 승인됩니다."
+      : "수동 승인 모드입니다(API 꺼짐). 지금 누르면 로컬 승인만 되고 전송은 되지 않습니다.";
+  }
+
   elements.approveAllBtn.textContent = rewardsEnabled ? "성공 학생 승인 + 전송" : "성공 학생 로컬 승인";
   elements.approveAllBtn.disabled = pendingCount === 0;
 }
@@ -694,6 +711,11 @@ function handleBoardTouch(event) {
     persistRecords();
     renderAll();
     showNotice(`${studentNumber}번 미션 성공 · 경과 시간 ${elapsedLabel}`, "success");
+
+    if (isAutoApprovalEnabled()) {
+      void autoApproveStudent(student);
+    }
+
     return;
   }
 
@@ -807,6 +829,57 @@ function cancelReadingForStudent(studentId) {
   persistRecords();
   renderAll();
   showNotice(`${student.number}번 읽는 중 상태를 취소했습니다.`, "default");
+}
+
+function isAutoApprovalEnabled() {
+  return settingsState.rewards?.approvalMode === "auto";
+}
+
+function hasRewardConfig() {
+  const config = settingsState.rewards || {};
+  return Boolean(String(config.apiUrl || "").trim() && String(config.classId || "").trim() && String(config.apiKey || "").trim());
+}
+
+async function autoApproveStudent(student) {
+  const entry = getTodayRecord()[student.id];
+
+  if (!entry || entry.status !== "success" || entry.approvedAt) {
+    return;
+  }
+
+  const approvedAt = new Date().toISOString();
+  const earnedPoints = calcEarnedPoints(entry);
+
+  if (!settingsState.rewards.enabled) {
+    markStudentApproved(entry, approvedAt, earnedPoints, "");
+    persistRecords();
+    renderAll();
+    return;
+  }
+
+  if (!hasRewardConfig()) {
+    return;
+  }
+
+  try {
+    await sendReward(student, approvedAt, earnedPoints);
+    markStudentApproved(entry, approvedAt, earnedPoints, "");
+  } catch (error) {
+    entry.rewardSyncError = error instanceof Error ? error.message : "포인트 전송 실패";
+    entry.history.push({
+      type: "reward_error",
+      at: approvedAt,
+      message: entry.rewardSyncError,
+    });
+    showNotice(
+      `${student.number}번 포인트 자동 전송에 실패했습니다. 승인 대기로 남겨 두었으니 일괄 승인으로 재시도하세요.`,
+      "warning",
+      { duration: 3000 }
+    );
+  }
+
+  persistRecords();
+  renderAll();
 }
 
 async function approveCompletedStudents() {
@@ -1031,6 +1104,7 @@ function populateSettingsForm() {
   setFieldValue(form, "schedule-thursday", toTextareaValue(settingsState.schedules.thursday));
   setFieldValue(form, "schedule-friday", toTextareaValue(settingsState.schedules.friday));
   setFieldChecked(form, "rewardEnabled", settingsState.rewards.enabled);
+  setFieldValue(form, "rewardApprovalMode", settingsState.rewards.approvalMode === "auto" ? "auto" : "manual");
   setFieldValue(form, "rewardApiUrl", settingsState.rewards.apiUrl);
   setFieldValue(form, "rewardApiKeyHeader", settingsState.rewards.apiKeyHeader);
   setFieldValue(form, "rewardApiKey", settingsState.rewards.apiKey);
@@ -1074,6 +1148,7 @@ function handleSettingsSubmit(event) {
     },
     rewards: {
       enabled: getFieldChecked(form, "rewardEnabled"),
+      approvalMode: getFieldValue(form, "rewardApprovalMode") === "auto" ? "auto" : "manual",
       apiUrl: getFieldValue(form, "rewardApiUrl").trim() || DEFAULT_SETTINGS.rewards.apiUrl,
       apiKeyHeader: getFieldValue(form, "rewardApiKeyHeader").trim() || DEFAULT_SETTINGS.rewards.apiKeyHeader,
       apiKey: getFieldValue(form, "rewardApiKey").trim(),
@@ -1516,6 +1591,7 @@ function loadSettings() {
     },
     rewards: {
       enabled: Boolean(loaded.rewards?.enabled),
+      approvalMode: loaded.rewards?.approvalMode === "auto" ? "auto" : "manual",
       apiUrl:
         typeof loaded.rewards?.apiUrl === "string" && loaded.rewards.apiUrl.trim()
           ? loaded.rewards.apiUrl
@@ -1944,6 +2020,7 @@ function fireAutoStop() {
   const now = new Date();
   let successCount = 0;
   let resetCount = 0;
+  const autoSuccessIds = [];
 
   getStudentIds().forEach((studentId) => {
     const entry = todayRecord[studentId];
@@ -1957,6 +2034,7 @@ function fireAutoStop() {
       entry.completedAt = now.toISOString();
       entry.history.push({ type: "success", at: entry.completedAt });
       successCount += 1;
+      autoSuccessIds.push(studentId);
     } else {
       const stoppedAt = now.toISOString();
       const prevHistory = Array.isArray(entry.history) ? [...entry.history] : [];
@@ -1975,6 +2053,16 @@ function fireAutoStop() {
   if (successCount > 0) parts.push(`${successCount}명 자동 성공`);
   if (resetCount > 0) parts.push(`${resetCount}명 자동 종료`);
   showNotice(`자동 종료: ${parts.join(", ")}`, "warning", { duration: 5000 });
+
+  if (isAutoApprovalEnabled()) {
+    autoSuccessIds.forEach((studentId) => {
+      const student = getStudentById(studentId);
+
+      if (student) {
+        void autoApproveStudent(student);
+      }
+    });
+  }
 }
 
 function clampPositiveInt(value, fallback, min, max) {
