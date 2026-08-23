@@ -330,10 +330,15 @@ h3 {
   line-height: 1.4;
   font-weight: 600;
   color: var(--text-main);
-  column-width: 15em;
+  display: grid;
+  grid-auto-flow: column;
   column-gap: clamp(18px, 1.8vw, 32px);
-  column-rule: 1px solid var(--line);
-  column-fill: balance;
+  row-gap: 2px;
+  align-content: start;
+}
+
+.important-panel .notice-item {
+  min-width: 0;
 }
 
 .panel-copy,

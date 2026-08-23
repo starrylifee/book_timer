@@ -377,7 +377,21 @@ function renderApproval() {
 }
 
 function renderAlerts() {
-  elements.importantNoticeText.textContent = settingsState.importantNotice || "중요한 공지가 없습니다.";
+  const el = elements.importantNoticeText;
+  const text = settingsState.importantNotice || "중요한 공지가 없습니다.";
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  el.textContent = "";
+  lines.forEach((line) => {
+    const item = document.createElement("span");
+    item.className = "notice-item";
+    item.textContent = line;
+    el.appendChild(item);
+  });
+
   fitImportantNoticeText();
 }
 
@@ -387,16 +401,43 @@ function fitImportantNoticeText() {
   const MAX_REM = mode === "notice" ? 2.3 : 1.7;
   const MIN_REM = 0.8;
   const STEP_REM = 0.05;
+  const MIN_COL_PX = 240;
 
-  let size = MAX_REM;
-  el.style.fontSize = `${size}rem`;
-  while (
-    size > MIN_REM &&
-    (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
-  ) {
-    size -= STEP_REM;
-    el.style.fontSize = `${size.toFixed(2)}rem`;
+  const itemCount = el.children.length;
+  if (itemCount === 0) return;
+  const maxCols = Math.max(1, Math.min(6, itemCount, Math.floor(el.clientWidth / MIN_COL_PX) || 1));
+
+  const applyColumns = (cols) => {
+    const rows = Math.ceil(itemCount / cols);
+    el.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+    el.style.gridTemplateRows = `repeat(${rows}, auto)`;
+  };
+
+  const fitFontForCurrentColumns = () => {
+    let size = MAX_REM;
+    el.style.fontSize = `${size}rem`;
+    while (
+      size > MIN_REM &&
+      (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
+    ) {
+      size -= STEP_REM;
+      el.style.fontSize = `${size.toFixed(2)}rem`;
+    }
+    return size;
+  };
+
+  // 열이 많은 쪽부터 시도해, 글자 크기가 같으면 가로로 펼치는 배치를 우선한다.
+  let best = { cols: 1, size: 0 };
+  for (let cols = maxCols; cols >= 1; cols -= 1) {
+    applyColumns(cols);
+    const size = fitFontForCurrentColumns();
+    if (size > best.size + 0.001) {
+      best = { cols, size };
+    }
+    if (size >= MAX_REM - 0.001) break;
   }
+  applyColumns(best.cols);
+  el.style.fontSize = `${best.size.toFixed(2)}rem`;
 }
 
 window.addEventListener("resize", () => {
