@@ -47,6 +47,7 @@ const DEFAULT_SETTINGS = {
     penaltyMinutes: DEFAULT_PENALTY_MINUTES,
     autoStopTime: "",
     theme: "navy",
+    infoRow: "both",
   },
   students: {
     roster: DEFAULT_STUDENT_ROSTER,
@@ -264,6 +265,30 @@ function normalizeTheme(value) {
   return allowed.has(theme) ? theme : "navy";
 }
 
+function normalizeInfoRow(value) {
+  const allowed = new Set(["both", "schedule", "notice", "hidden"]);
+  const mode = String(value || "").trim();
+  return allowed.has(mode) ? mode : "both";
+}
+
+function applyInfoRowLayout() {
+  const mode = normalizeInfoRow(settingsState.general?.infoRow);
+  const stage = document.querySelector(".stage");
+  const ribbon = document.querySelector(".info-ribbon");
+  const schedulePanel = document.querySelector(".schedule-focus-panel");
+  const importantPanel = document.querySelector(".important-panel");
+  if (!stage || !ribbon || !schedulePanel || !importantPanel) return;
+
+  stage.classList.toggle("info-row-hidden", mode === "hidden");
+  ribbon.classList.toggle("single-panel", mode === "schedule" || mode === "notice");
+  schedulePanel.hidden = mode === "notice" || mode === "hidden";
+  importantPanel.hidden = mode === "schedule" || mode === "hidden";
+
+  if (mode === "both" || mode === "notice") {
+    fitImportantNoticeText();
+  }
+}
+
 function applyTheme() {
   const theme = normalizeTheme(settingsState.general?.theme);
 
@@ -277,6 +302,7 @@ function applyTheme() {
 
 function renderGeneral() {
   applyTheme();
+  applyInfoRowLayout();
   const title = buildDisplayTitle();
   const baseMinutes = getBaseMinutes();
   const penaltyMinutes = getPenaltyMinutes();
@@ -1119,6 +1145,7 @@ function populateSettingsForm() {
   setFieldValue(form, "penaltyMinutes", settingsState.general.penaltyMinutes);
   setFieldValue(form, "autoStopTime", settingsState.general.autoStopTime || "");
   setFieldValue(form, "appTheme", normalizeTheme(settingsState.general.theme));
+  setFieldValue(form, "infoRowMode", normalizeInfoRow(settingsState.general.infoRow));
   setFieldValue(form, "adminPassword", getAdminPassword());
   setFieldValue(form, "studentRoster", rosterToTextareaValue(settingsState.students.roster));
   elements.rosterCountInput.value = String(getStudentRoster().length);
@@ -1187,6 +1214,7 @@ function handleSettingsSubmit(event) {
       penaltyMinutes: clampPositiveInt(getFieldValue(form, "penaltyMinutes"), DEFAULT_PENALTY_MINUTES, 1, 20),
       autoStopTime: normalizeTimeString(getFieldValue(form, "autoStopTime")),
       theme: normalizeTheme(getFieldValue(form, "appTheme")),
+      infoRow: normalizeInfoRow(getFieldValue(form, "infoRowMode")),
     },
     security: {
       adminPassword: getFieldValue(form, "adminPassword"),
@@ -1633,6 +1661,7 @@ function loadSettings() {
       ),
       autoStopTime: normalizeTimeString(loaded.general?.autoStopTime),
       theme: normalizeTheme(loaded.general?.theme),
+      infoRow: normalizeInfoRow(loaded.general?.infoRow),
     },
     students: {
       roster: normalizeStudentRoster(loaded.students?.roster),

@@ -278,6 +278,22 @@ h3 {
   gap: clamp(8px, 0.75vw, 12px);
 }
 
+.info-ribbon.single-panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.info-ribbon .panel[hidden] {
+  display: none;
+}
+
+.stage.info-row-hidden {
+  grid-template-rows: minmax(96px, 0.25fr) minmax(0, 3.27fr);
+}
+
+.stage.info-row-hidden .info-ribbon {
+  display: none;
+}
+
 .schedule-focus-panel,
 .schedule-panel {
   display: grid;
