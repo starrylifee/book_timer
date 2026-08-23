@@ -303,6 +303,19 @@ h3 {
   align-items: center;
 }
 
+.important-panel {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.important-panel .panel-copy {
+  min-height: 0;
+  overflow: hidden;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
 .panel-copy,
 .helper-copy {
   white-space: pre-line;

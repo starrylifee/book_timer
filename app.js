@@ -352,6 +352,29 @@ function renderApproval() {
 
 function renderAlerts() {
   elements.importantNoticeText.textContent = settingsState.importantNotice || "중요한 공지가 없습니다.";
+  fitImportantNoticeText();
+}
+
+function fitImportantNoticeText() {
+  const el = elements.importantNoticeText;
+  const MAX_REM = 1.7;
+  const MIN_REM = 0.8;
+  const STEP_REM = 0.05;
+
+  let size = MAX_REM;
+  el.style.fontSize = `${size}rem`;
+  while (size > MIN_REM && el.scrollHeight > el.clientHeight + 1) {
+    size -= STEP_REM;
+    el.style.fontSize = `${size.toFixed(2)}rem`;
+  }
+}
+
+window.addEventListener("resize", () => {
+  fitImportantNoticeText();
+});
+
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => fitImportantNoticeText());
 }
 
 function renderSchedule() {
