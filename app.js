@@ -383,13 +383,17 @@ function renderAlerts() {
 
 function fitImportantNoticeText() {
   const el = elements.importantNoticeText;
-  const MAX_REM = 1.7;
+  const mode = normalizeInfoRow(settingsState.general?.infoRow);
+  const MAX_REM = mode === "notice" ? 2.3 : 1.7;
   const MIN_REM = 0.8;
   const STEP_REM = 0.05;
 
   let size = MAX_REM;
   el.style.fontSize = `${size}rem`;
-  while (size > MIN_REM && el.scrollHeight > el.clientHeight + 1) {
+  while (
+    size > MIN_REM &&
+    (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
+  ) {
     size -= STEP_REM;
     el.style.fontSize = `${size.toFixed(2)}rem`;
   }

@@ -330,6 +330,10 @@ h3 {
   line-height: 1.4;
   font-weight: 600;
   color: var(--text-main);
+  column-width: 15em;
+  column-gap: clamp(18px, 1.8vw, 32px);
+  column-rule: 1px solid var(--line);
+  column-fill: balance;
 }
 
 .panel-copy,
